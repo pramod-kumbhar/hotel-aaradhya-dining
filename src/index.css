@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Noto Sans Devanagari', 'Poppins', sans-serif;
+    background-color: #12100e;
+    color: #f5f5f4;
+  }
+}
+
+/* Glassmorphism card styles */
+.glass-panel {
+  background: rgba(30, 27, 24, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.glass-panel-gold {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(180, 83, 9, 0.05) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1c1917;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #78350f;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}
+
+/* Shimmer animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(217, 119, 6, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+/* Single Page Clean Full Receipt Print Engine */
+@media print {
+  @page {
+    margin: 8mm;
+    size: portrait;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide non-printable elements */
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Cover entire print canvas with solid white overlay */
+  .print-modal-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    max-height: 100vh !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    z-index: 999999 !important;
+  }
+
+  /* Single Page Full Receipt Container */
+  #printable-bill {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 10px auto !important;
+    padding: 24px !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    border-radius: 12px !important;
+    font-family: 'Courier New', Courier, monospace, 'Noto Sans Devanagari' !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  #printable-bill *,
+  #printable-bill div,
+  #printable-bill span,
+  #printable-bill strong,
+  #printable-bill td,
+  #printable-bill th,
+  #printable-bill p,
+  #printable-bill h1,
+  #printable-bill h2,
+  #printable-bill h3,
+  #printable-bill a {
+    color: #000000 !important;
+    background: transparent !important;
+    font-weight: 700 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+  }
+
+  #printable-bill .border-dashed,
+  #printable-bill .border-b,
+  #printable-bill .border-t,
+  #printable-bill tr,
+  #printable-bill th,
+  #printable-bill td {
+    border-color: #000000 !important;
+    border-style: solid !important;
+  }
+}

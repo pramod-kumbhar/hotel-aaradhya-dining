@@ -1,0 +1,848 @@
+export const HOTEL_INFO = {
+  nameMr: "हॉटेल आराध्या डायनिंग",
+  nameEn: "Hotel Aaradhya Dining",
+  subtitleMr: "दरपत्रक (शाकाहारी आणि मांसाहारी वैशिष्ट्य)",
+  subtitleEn: "Authentic Maharashtrian Veg & Non-Veg Dining",
+  addressMr: "पंचगंगा नदीजवळ, हुपरी-इचलकरंजी रोड, शिरदवाड ",
+  addressEn: "Near Panchganga River, Hupari-Ichalkaranji Road, Shirdwad",
+  phone: "+91 98765 43210",
+  gstin: "27AAAC1234F1Z5",
+  upiId: "aaradhya.dining@upi",
+  upiName: "Hotel Aaradhya Dining",
+};
+
+export const HOTEL_RULES = [
+  {
+    id: 1,
+    mr: "दर सोमवारी हॉटेल बंद राहील.",
+    en: "Hotel remains closed every Monday."
+  },
+  {
+    id: 2,
+    mr: "ताटातील काहीही पार्सल मिळणार नाही.",
+    en: "No parcel service for thali components."
+  },
+  {
+    id: 3,
+    mr: "१० वर्षांवरील मुलांना वेगळे ताट बसेल.",
+    en: "Children above 10 years require a separate Thali."
+  },
+  {
+    id: 4,
+    mr: "एक्स्ट्रा ताट हवे असेल तर रु. ६०/- चार्जेस लागेल.",
+    en: "Extra Thali charge will be ₹60/- extra."
+  },
+  {
+    id: 5,
+    mr: "एकदा ऑर्डर दिलेली बदलणार नाही.",
+    en: "Orders once placed will not be changed."
+  },
+  {
+    id: 6,
+    mr: "ऑर्डर दिल्यानंतर २० मिनिटांनी जेवण मिळेल.",
+    en: "Food will be served 20 minutes after ordering."
+  },
+  {
+    id: 7,
+    mr: "ऑर्डर देण्याच्या प्रथम बिल देऊन सहकार्य करावे.",
+    en: "Please cooperate by paying the bill first upon ordering."
+  },
+  {
+    id: 8,
+    mr: "अन्न हे पूर्ण ब्रह्म आहे. कृपया अन्नाची नासाडी करू नका.",
+    en: "Food is sacred. Please avoid wasting food."
+  },
+  {
+    id: 9,
+    mr: "मद्यपान करण्यास सक्त मनाई आहे.",
+    en: "Alcohol consumption is strictly prohibited."
+  },
+  {
+    id: 10,
+    mr: "मौल्यवान वस्तू व वाहने स्वतःच्या जबाबदारीवर संभाळा.",
+    en: "Take care of your valuables and vehicles at your own responsibility."
+  }
+];
+
+export const CATEGORIES = [
+  { id: "all", nameMr: "सर्व पदार्थ", nameEn: "All Items", icon: "Utensils" },
+  { id: "veg", nameMr: "शाकाहारी", nameEn: "Vegetarian", icon: "Leaf", color: "text-emerald-500" },
+  { id: "egg", nameMr: "अंडाकरी", nameEn: "Egg Dishes", icon: "Egg", color: "text-amber-400" },
+  { id: "chicken", nameMr: "चिकन", nameEn: "Chicken", icon: "Drumstick", color: "text-red-500" },
+  { id: "mutton", nameMr: "मटण", nameEn: "Mutton", icon: "Flame", color: "text-orange-500" },
+  { id: "extras", nameMr: "अतिरिक्त / साइड्स", nameEn: "Extras & Beverages", icon: "Coffee", color: "text-cyan-400" },
+];
+
+export const INITIAL_MENU_ITEMS = [
+  // --- शाकाहारी (Veg) ---
+  {
+    id: "v1",
+    nameMr: "काजू मसाला ताट",
+    nameEn: "Kaju Masala Thali",
+    category: "veg",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "काजू मसाला, २ भाकरी/चपाती, भात, रस्सा आणि कोशिंबीर",
+    descEn: "Kaju Masala, 2 Bhakri/Chapati, Rice, Gravy & Salad",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v2",
+    nameMr: "पनीर मसाला ताट",
+    nameEn: "Paneer Masala Thali",
+    category: "veg",
+    price: 180,
+    isThali: true,
+    available: true,
+    descMr: "पनीर मसाला, २ भाकरी/चपाती, भात, रस्सा आणि कोशिंबीर",
+    descEn: "Paneer Masala, 2 Bhakri/Chapati, Rice, Gravy & Salad",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v3",
+    nameMr: "काजू कुर्मा ताट",
+    nameEn: "Kaju Kurma Thali",
+    category: "veg",
+    price: 200,
+    isThali: true,
+    available: true,
+    descMr: "शाही काजू कुर्मा रस्सा ताट",
+    descEn: "Rich Kaju Kurma Gravy Thali",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "v4",
+    nameMr: "काजू पनीर ताट",
+    nameEn: "Kaju Paneer Thali",
+    category: "veg",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "काजू आणि पनीरचे खास कोल्हापुरी ताट",
+    descEn: "Special Kolhapuri Kaju & Paneer Combo Thali",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v5",
+    nameMr: "पनीर टिक्का ताट",
+    nameEn: "Paneer Tikka Thali",
+    category: "veg",
+    price: 200,
+    isThali: true,
+    available: true,
+    descMr: "तंदूर Paneer Tikka ग्रेव्ही ताट",
+    descEn: "Paneer Tikka Gravy Thali",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "v6",
+    nameMr: "पनीर शिंगारी",
+    nameEn: "Paneer Shingari",
+    category: "veg",
+    price: 210,
+    isThali: false,
+    available: true,
+    descMr: "चमचमीत पनीर शिंगारी स्पेशल भाजी",
+    descEn: "Chef Special Spicy Paneer Shingari",
+    spicyLevel: "Hot",
+    isSpecial: true
+  },
+  {
+    id: "v7",
+    nameMr: "मिक्स वेज ताट",
+    nameEn: "Mix Veg Thali",
+    category: "veg",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "विविध भाज्यांचे ताट",
+    descEn: "Assorted Garden Vegetables Thali",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v8",
+    nameMr: "काजू मसाला प्लेट",
+    nameEn: "Kaju Masala Plate",
+    category: "veg",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "काजू मसाला स्वतंत्र भाजी प्लेट",
+    descEn: "Standalone Kaju Masala Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v9",
+    nameMr: "काजू कुर्मा प्लेट",
+    nameEn: "Kaju Kurma Plate",
+    category: "veg",
+    price: 130,
+    isThali: false,
+    available: true,
+    descMr: "काजू कुर्मा भाजी प्लेट",
+    descEn: "Kaju Kurma Gravy Portion",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "v10",
+    nameMr: "काजू पनीर मसाला प्लेट",
+    nameEn: "Kaju Paneer Masala Plate",
+    category: "veg",
+    price: 130,
+    isThali: false,
+    available: true,
+    descMr: "काजू पनीर भाजी प्लेट",
+    descEn: "Kaju Paneer Masala Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v11",
+    nameMr: "पनीर मसाला प्लेट",
+    nameEn: "Paneer Masala Plate",
+    category: "veg",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "पनीर मसाला भाजी प्लेट",
+    descEn: "Paneer Masala Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "v12",
+    nameMr: "काजू फ्राय",
+    nameEn: "Kaju Fry",
+    category: "veg",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "कुरकुरीत तळलेले काजू स्टार्टर",
+    descEn: "Crispy Roasted Kaju Starter",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "v13",
+    nameMr: "पनीर फ्राय",
+    nameEn: "Paneer Fry",
+    category: "veg",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "मसालेदार पनीर फ्राय",
+    descEn: "Spicy Pan-Fried Paneer Cubes",
+    spicyLevel: "Medium"
+  },
+
+  // --- अंडाकरी (Egg Curry) ---
+  {
+    id: "e1",
+    nameMr: "अंडा मसाला ताट",
+    nameEn: "Egg Masala Thali",
+    category: "egg",
+    price: 150,
+    isThali: true,
+    available: true,
+    descMr: "२ अंडी मसाला ग्रेव्ही, २ भाकरी, भात व रस्सा",
+    descEn: "2 Egg Gravy, 2 Bhakri/Chapati, Rice & Rassa",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e2",
+    nameMr: "अंडा मख्खन ताट",
+    nameEn: "Egg Makhan Thali",
+    category: "egg",
+    price: 170,
+    isThali: true,
+    available: true,
+    descMr: "बटर ग्रेव्हीमधील स्वादिष्ट अंडा ताट",
+    descEn: "Creamy Butter Egg Curry Thali",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "e3",
+    nameMr: "अंडा कोल्हापुरी ताट",
+    nameEn: "Egg Kolhapuri Thali",
+    category: "egg",
+    price: 170,
+    isThali: true,
+    available: true,
+    descMr: "झणझणीत कोल्हापुरी रस्सा अंडा ताट",
+    descEn: "Spicy Kolhapuri Style Egg Thali",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "e4",
+    nameMr: "अंडा फ्राय ताट",
+    nameEn: "Egg Fry Thali",
+    category: "egg",
+    price: 170,
+    isThali: true,
+    available: true,
+    descMr: "तवा फ्राय अंडी ताट",
+    descEn: "Tawa Egg Fry Thali",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e5",
+    nameMr: "अंडा लपेट ताट",
+    nameEn: "Egg Lapet Thali",
+    category: "egg",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "ऑम्लेट लपेटलेला अंडा मसाला ताट",
+    descEn: "Omelette Wrapped Egg Gravy Thali",
+    spicyLevel: "Spicy",
+    isSpecial: true
+  },
+  {
+    id: "e6",
+    nameMr: "अंडा मसाला प्लेट",
+    nameEn: "Egg Masala Plate",
+    category: "egg",
+    price: 140,
+    isThali: false,
+    available: true,
+    descMr: "अंडा मसाला भाजी",
+    descEn: "Egg Masala Curry Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e7",
+    nameMr: "अंडा फ्राय प्लेट",
+    nameEn: "Egg Fry Plate",
+    category: "egg",
+    price: 80,
+    isThali: false,
+    available: true,
+    descMr: "२ अंडी फ्राय प्लेट",
+    descEn: "2 Eggs Fried Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e8",
+    nameMr: "अंडा लपेट प्लेट",
+    nameEn: "Egg Lapet Plate",
+    category: "egg",
+    price: 100,
+    isThali: false,
+    available: true,
+    descMr: "अंडा लपेट भाजी प्लेट",
+    descEn: "Egg Lapet Special Curry Portion",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "e9",
+    nameMr: "अंडा मख्खनवाला प्लेट",
+    nameEn: "Egg Makhanwala Plate",
+    category: "egg",
+    price: 110,
+    isThali: false,
+    available: true,
+    descMr: "अंडा मख्खन भाजी प्लेट",
+    descEn: "Butter Egg Curry Portion",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "e10",
+    nameMr: "रोटी / भाकरी",
+    nameEn: "Roti / Bhakri",
+    category: "egg",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "गव्हाची गरमागरम रोटी / भाकरी",
+    descEn: "Hot Tawa Roti / Chapati",
+    spicyLevel: "None"
+  },
+  {
+    id: "e11",
+    nameMr: "मिरंची वाटी",
+    nameEn: "Mirchi Vati",
+    category: "egg",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "तळलेली तिखट मिरंची वाटी",
+    descEn: "Fried Green Chili Bowl",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "e12",
+    nameMr: "ऑम्लेट",
+    nameEn: "Omelette",
+    category: "egg",
+    price: 50,
+    isThali: false,
+    available: true,
+    descMr: "२ अंड्यांचे मसाला ऑम्लेट",
+    descEn: "2 Egg Masala Omelette",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e13",
+    nameMr: "भुर्जी",
+    nameEn: "Egg Bhurji",
+    category: "egg",
+    price: 50,
+    isThali: false,
+    available: true,
+    descMr: "कांदा-टमाटा अंडी भुर्जी",
+    descEn: "Spiced Scrambled Eggs Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "e14",
+    nameMr: "सिंगल बॉईल एक्स्ट्रा",
+    nameEn: "Single Boiled Egg",
+    category: "egg",
+    price: 15,
+    isThali: false,
+    available: true,
+    descMr: "१ उकडलेले अंडे",
+    descEn: "1 Hard Boiled Egg",
+    spicyLevel: "None"
+  },
+  {
+    id: "e15",
+    nameMr: "पापड",
+    nameEn: "Papad",
+    category: "egg",
+    price: 10,
+    isThali: false,
+    available: true,
+    descMr: "भाजलेला / तळलेला उडीद पापड",
+    descEn: "Roasted / Fried Udad Papad",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "e16",
+    nameMr: "राईस ताट (राईस १ प्लेट, रस्सा वाटी)",
+    nameEn: "Rice Thali (1 Plate Rice + Rassa)",
+    category: "egg",
+    price: 100,
+    isThali: true,
+    available: true,
+    descMr: "१ प्लेट इंदरयाणी भात सोबत कोल्हापुरी तांबडा-पांढरा रस्सा वाटी",
+    descEn: "Steamed Rice with Authentic Kolhapuri Curry Bowl",
+    spicyLevel: "Medium"
+  },
+
+  // --- चिकन (Chicken) ---
+  {
+    id: "c1",
+    nameMr: "चिकन मसाला ताट",
+    nameEn: "Chicken Masala Thali",
+    category: "chicken",
+    price: 180,
+    isThali: true,
+    available: true,
+    descMr: "चिकन मसाला, २ भाकरी, भात, तांबडा-पांढरा रस्सा",
+    descEn: "Chicken Masala, 2 Bhakri/Chapati, Rice, Soup & Gravy",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "c2",
+    nameMr: "चिकन फ्राय ताट",
+    nameEn: "Chicken Fry Thali",
+    category: "chicken",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "सुक्का चिकन फ्राय, रस्सा वाटी, २ भाकरी, भात",
+    descEn: "Dry Chicken Fry, Gravy Bowl, 2 Bhakri & Rice",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "c3",
+    nameMr: "चिकन मालवणी ताट",
+    nameEn: "Chicken Malvani Thali",
+    category: "chicken",
+    price: 200,
+    isThali: true,
+    available: true,
+    descMr: "मालवणी वाटप मसाल्याचे खास चिकन ताट",
+    descEn: "Special Malvani Coconut Masala Chicken Thali",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "c4",
+    nameMr: "बटर चिकन ताट",
+    nameEn: "Butter Chicken Thali",
+    category: "chicken",
+    price: 200,
+    isThali: true,
+    available: true,
+    descMr: "मलाईदार बटर चिकन ताट",
+    descEn: "Creamy Rich Butter Chicken Thali",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "c5",
+    nameMr: "चिकन कोल्हापुरी ताट",
+    nameEn: "Chicken Kolhapuri Thali",
+    category: "chicken",
+    price: 190,
+    isThali: true,
+    available: true,
+    descMr: "कोल्हापुरी झणझणीत तिखट चिकन ताट",
+    descEn: "Fiery Hot Kolhapuri Chicken Thali",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "c6",
+    nameMr: "खरडा चिकन",
+    nameEn: "Kharda Chicken",
+    category: "chicken",
+    price: 200,
+    isThali: false,
+    available: true,
+    descMr: "हिरव्या मिरची ठेचा मधील गरमागरम खरडा चिकन",
+    descEn: "Chicken Cooked in Green Chili Thecha Gravy",
+    spicyLevel: "Hot",
+    isSpecial: true
+  },
+  {
+    id: "c7",
+    nameMr: "चिकन मुघलाई",
+    nameEn: "Chicken Mughlai",
+    category: "chicken",
+    price: 220,
+    isThali: false,
+    available: true,
+    descMr: "शाही सुगंधी चिकन मुघलाई",
+    descEn: "Rich Mughlai Chicken Special Gravy",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "c8",
+    nameMr: "शेतकरी चिकन",
+    nameEn: "Shetkari Chicken",
+    category: "chicken",
+    price: 240,
+    isThali: false,
+    available: true,
+    descMr: "गावरान शेतकरी मसाल्यातील खास चिकन ताट / डिश",
+    descEn: "Authentic Village-Style Shetkari Special Chicken",
+    spicyLevel: "Hot",
+    isSpecial: true
+  },
+  {
+    id: "c9",
+    nameMr: "चिकन मसाला प्लेट",
+    nameEn: "Chicken Masala Plate",
+    category: "chicken",
+    price: 100,
+    isThali: false,
+    available: true,
+    descMr: "चिकन मसाला भाजी",
+    descEn: "Chicken Masala Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "c10",
+    nameMr: "चिकन फ्राय प्लेट",
+    nameEn: "Chicken Fry Plate",
+    category: "chicken",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "सुक्का चिकन फ्राय प्लेट",
+    descEn: "Dry Roasted Chicken Fry Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "c11",
+    nameMr: "चिकन मालवणी प्लेट",
+    nameEn: "Chicken Malvani Plate",
+    category: "chicken",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "मालवणी चिकन भाजी प्लेट",
+    descEn: "Malvani Chicken Gravy Portion",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "c12",
+    nameMr: "बटर चिकन प्लेट",
+    nameEn: "Butter Chicken Plate",
+    category: "chicken",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "बटर चिकन भाजी प्लेट",
+    descEn: "Butter Chicken Gravy Portion",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "c13",
+    nameMr: "कोल्हापुरी चिकन प्लेट",
+    nameEn: "Kolhapuri Chicken Plate",
+    category: "chicken",
+    price: 120,
+    isThali: false,
+    available: true,
+    descMr: "कोल्हापुरी सुक्का चिकन प्लेट",
+    descEn: "Spicy Kolhapuri Chicken Portion",
+    spicyLevel: "Hot"
+  },
+
+  // --- मटण (Mutton) ---
+  {
+    id: "m1",
+    nameMr: "मटण मसाला ताट",
+    nameEn: "Mutton Masala Thali",
+    category: "mutton",
+    price: 230,
+    isThali: true,
+    available: true,
+    descMr: "गावरान मटण मसाला, २ बाजरी भाकरी, तांबडा-पांढरा रस्सा, भात",
+    descEn: "Country Mutton Masala, 2 Bajri Bhakri, Red/White Curry & Rice",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "m2",
+    nameMr: "मटण फ्राय ताट",
+    nameEn: "Mutton Fry Thali",
+    category: "mutton",
+    price: 240,
+    isThali: true,
+    available: true,
+    descMr: "सुक्का मटण फ्राय ताट सोबत गरमागरम रस्सा वाटी",
+    descEn: "Dry Fried Mutton Thali with Hot Broth",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "m3",
+    nameMr: "मटण मालवणी ताट",
+    nameEn: "Mutton Malvani Thali",
+    category: "mutton",
+    price: 250,
+    isThali: true,
+    available: true,
+    descMr: "कोकणी मालवणी मसाल्याचे मटण ताट",
+    descEn: "Malvani Style Coconut Mutton Thali",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "m4",
+    nameMr: "कोल्हापुरी मटण ताट",
+    nameEn: "Kolhapuri Mutton Thali",
+    category: "mutton",
+    price: 250,
+    isThali: true,
+    available: true,
+    descMr: "ओरिजिनल कोल्हापुरी तांबडा-पांढरा रस्सा मटण ताट",
+    descEn: "Authentic Spicy Kolhapuri Mutton Thali",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "m5",
+    nameMr: "खरडा मटण ताट",
+    nameEn: "Kharda Mutton Thali",
+    category: "mutton",
+    price: 250,
+    isThali: true,
+    available: true,
+    descMr: "ठेचा मसाल्यातील खरडा मटण ताट",
+    descEn: "Green Chili Thecha Mutton Thali",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "m6",
+    nameMr: "शेतकरी मटण ताट",
+    nameEn: "Shetkari Mutton Thali",
+    category: "mutton",
+    price: 270,
+    isThali: true,
+    available: true,
+    descMr: "शेतकरी पद्धतीचे मटण सुक्का व रस्सा ताट",
+    descEn: "Farmers Special Mutton Thali",
+    spicyLevel: "Spicy",
+    isSpecial: true
+  },
+  {
+    id: "m7",
+    nameMr: "स्पे. शेतकरी मटण ताट",
+    nameEn: "Special Shetkari Mutton Thali",
+    category: "mutton",
+    price: 350,
+    isThali: true,
+    available: true,
+    descMr: "हॉटेल आराध्याचे सिग्नेचर विशेष शेतकरी मटण ताट (मटण सुक्का, आळणी रस्सा, २ भाकरी, वाटी खेकडा/अंडा फ्राय)",
+    descEn: "Hotel Aaradhya Signature Royal Shetkari Mutton Grand Thali",
+    spicyLevel: "Hot",
+    isSpecial: true
+  },
+  {
+    id: "m8",
+    nameMr: "मटण प्लेट",
+    nameEn: "Mutton Plate",
+    category: "mutton",
+    price: 130,
+    isThali: false,
+    available: true,
+    descMr: "मटण रस्सा भाजी प्लेट",
+    descEn: "Mutton Curry Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "m9",
+    nameMr: "मटण फ्राय प्लेट",
+    nameEn: "Mutton Fry Plate",
+    category: "mutton",
+    price: 140,
+    isThali: false,
+    available: true,
+    descMr: "सुक्का मटण फ्राय डिश",
+    descEn: "Dry Mutton Fry Portion",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "m10",
+    nameMr: "मटण मालवणी प्लेट",
+    nameEn: "Mutton Malvani Plate",
+    category: "mutton",
+    price: 150,
+    isThali: false,
+    available: true,
+    descMr: "मालवणी मटण भाजी",
+    descEn: "Malvani Mutton Gravy Portion",
+    spicyLevel: "Spicy"
+  },
+  {
+    id: "m11",
+    nameMr: "कोल्हापुरी मटण प्लेट",
+    nameEn: "Kolhapuri Mutton Plate",
+    category: "mutton",
+    price: 150,
+    isThali: false,
+    available: true,
+    descMr: "झणझणीत कोल्हापुरी मटण प्लेट",
+    descEn: "Spicy Kolhapuri Mutton Portion",
+    spicyLevel: "Hot"
+  },
+
+  // --- अतिरिक्त / साइड्स (Extras / Beverages) ---
+  {
+    id: "x1",
+    nameMr: "ग्रेव्ही / गिरवी वाटी",
+    nameEn: "Gravy / Girvi Bowl",
+    category: "extras",
+    price: 30,
+    isThali: false,
+    available: true,
+    descMr: "खास तांबडा-पांढरा रस्सा / गिरवी वाटी",
+    descEn: "Extra Kolhapuri Rassa / Girvi Gravy Bowl",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "x2",
+    nameMr: "पाणी बॉटल (Mineral Water)",
+    nameEn: "Mineral Water Bottle (1L)",
+    category: "extras",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "१ लिटर पॅकबंद मिनरल वॉटर बॉटल",
+    descEn: "1 Litre Sealed Mineral Water Bottle",
+    spicyLevel: "None"
+  },
+  {
+    id: "x3",
+    nameMr: "बाजरी भाकरी",
+    nameEn: "Bajri Bhakri",
+    category: "extras",
+    price: 25,
+    isThali: false,
+    available: true,
+    descMr: "गरमागरम चुलीवरची बाजरी भाकरी",
+    descEn: "Hot Tawa Bajri Bhakri",
+    spicyLevel: "None"
+  },
+  {
+    id: "x4",
+    nameMr: "चपाती / पोळी",
+    nameEn: "Chapati / Poli",
+    category: "extras",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "मऊ गव्हाची चपाती / पोळी",
+    descEn: "Soft Wheat Chapati / Poli",
+    spicyLevel: "None"
+  },
+  {
+    id: "x5",
+    nameMr: "उडीद पापड",
+    nameEn: "Udad Papad",
+    category: "extras",
+    price: 10,
+    isThali: false,
+    available: true,
+    descMr: "भाजलेला / तळलेला उडीद पापड",
+    descEn: "Roasted / Fried Udad Papad",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "x6",
+    nameMr: "मसाला पापड",
+    nameEn: "Masala Papad",
+    category: "extras",
+    price: 30,
+    isThali: false,
+    available: true,
+    descMr: "कांदा-टोमॅटो आणि कोथिंबीर मसालेदार पापड",
+    descEn: "Spiced Onion & Tomato Masala Papad",
+    spicyLevel: "Medium"
+  },
+  {
+    id: "x7",
+    nameMr: "सोलकढी",
+    nameEn: "Solkadhi",
+    category: "extras",
+    price: 30,
+    isThali: false,
+    available: true,
+    descMr: "कोकणी खास ताज्या नारळाची व कोकमची सोलकढी",
+    descEn: "Authentic Kokum & Coconut Milk Solkadhi",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "x8",
+    nameMr: "मसाला ताक",
+    nameEn: "Masala Taak (Buttermilk)",
+    category: "extras",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "थंडगार कोथिंबीर जीरा मसाला ताक",
+    descEn: "Chilled Cumin Spiced Buttermilk",
+    spicyLevel: "Mild"
+  },
+  {
+    id: "x9",
+    nameMr: "कोल्ड ड्रिंक्स",
+    nameEn: "Cold Drink (200ml)",
+    category: "extras",
+    price: 25,
+    isThali: false,
+    available: true,
+    descMr: "थंडगार २०० मिली कोल्ड ड्रिंक",
+    descEn: "Chilled 200ml Soft Drink Bottle",
+    spicyLevel: "None"
+  },
+  {
+    id: "x10",
+    nameMr: "कांदा-लिंबू प्लेट",
+    nameEn: "Onion & Lemon Salad Plate",
+    category: "extras",
+    price: 15,
+    isThali: false,
+    available: true,
+    descMr: "ताजा कांदा, लिंबू आणि काकडी प्लेट",
+    descEn: "Fresh Onion, Lemon & Cucumber Salad Plate",
+    spicyLevel: "None"
+  }
+];

@@ -1,0 +1,631 @@
+import express from 'express';
+import cors from 'cors';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+import path from 'path';
+import { getDb, initDb, executeWithRetry } from './db.js';
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+const PORT = process.env.PORT || 5000;
+
+const safeJsonParse = (value, fallback) => {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+// Create SMTP Nodemailer Transporter with Port 465/587 Auto Fallback & Clean Password Handling
+const createTransporter = (forceTls = false) => {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = forceTls ? 587 : parseInt(process.env.SMTP_PORT || '465', 10);
+  const secure = !forceTls && (process.env.SMTP_SECURE === 'true' || port === 465);
+  const user = (process.env.SMTP_USER || process.env.VITE_OWNER_EMAIL || '').trim();
+  const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '').trim(); // Remove spaces from 16-char app password
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user,
+      pass
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+};
+
+// ===================================================
+// TURSO DATABASE REST API ENDPOINTS (WITH RETRY & FALLBACK)
+// ===================================================
+
+// 1. Get All Production Orders
+app.get('/api/orders', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM orders ORDER BY timestamp DESC');
+    const orders = result.rows.map(row => ({
+      id: row.id,
+      tableNo: row.table_no,
+      customerName: row.customer_name,
+      customerPhone: row.customer_phone,
+      items: safeJsonParse(row.items, []),
+      specialNotes: row.special_notes || '',
+      itemTotal: Number(row.item_total || 0),
+      extraThaliTotal: Number(row.extra_thali_total || 0),
+      grandTotal: Number(row.grand_total),
+      paymentMethod: row.payment_method,
+      udharStatus: row.udhar_status || 'none',
+      status: row.status,
+      timestamp: row.timestamp,
+      settledAt: row.settled_at
+    }));
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Save New Order to Turso DB
+app.post('/api/orders', async (req, res) => {
+  const {
+    id,
+    tableNo,
+    customerName,
+    customerPhone,
+    items,
+    specialNotes,
+    itemTotal,
+    extraThaliTotal,
+    grandTotal,
+    paymentMethod,
+    udharStatus,
+    status,
+    timestamp,
+    settledAt
+  } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO orders (id, table_no, customer_name, customer_phone, items, special_notes, item_total, extra_thali_total, grand_total, payment_method, udhar_status, status, timestamp, settled_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              table_no = excluded.table_no,
+              customer_name = excluded.customer_name,
+              customer_phone = excluded.customer_phone,
+              items = excluded.items,
+              special_notes = excluded.special_notes,
+              item_total = excluded.item_total,
+              extra_thali_total = excluded.extra_thali_total,
+              grand_total = excluded.grand_total,
+              payment_method = excluded.payment_method,
+              udhar_status = excluded.udhar_status,
+              status = excluded.status,
+              timestamp = excluded.timestamp,
+              settled_at = excluded.settled_at`,
+      args: [
+        id,
+        tableNo,
+        customerName || '',
+        customerPhone || '',
+        JSON.stringify(items || []),
+        specialNotes || '',
+        Number(itemTotal || 0),
+        Number(extraThaliTotal || 0),
+        Number(grandTotal || 0),
+        paymentMethod || 'Cash',
+        udharStatus || 'none',
+        status || 'pending',
+        timestamp || new Date().toISOString(),
+        settledAt || null
+      ]
+    });
+    res.json({ success: true, message: 'Order saved to Turso DB!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Update Order Status / Settlement
+app.put('/api/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status, paymentMethod, customerName, customerPhone, items, specialNotes, itemTotal, extraThaliTotal, grandTotal, udharStatus, settledAt } = req.body;
+  try {
+    const existing = await executeWithRetry({
+      sql: 'SELECT * FROM orders WHERE id = ?',
+      args: [id]
+    });
+    if (!existing.rows.length) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+    const current = existing.rows[0];
+    await executeWithRetry({
+      sql: `UPDATE orders SET
+              status = ?,
+              payment_method = ?,
+              customer_name = ?,
+              customer_phone = ?,
+              items = ?,
+              special_notes = ?,
+              item_total = ?,
+              extra_thali_total = ?,
+              grand_total = ?,
+              udhar_status = ?,
+              settled_at = ?
+            WHERE id = ?`,
+      args: [
+        status || current.status,
+        paymentMethod || current.payment_method || 'Cash',
+        customerName ?? current.customer_name ?? '',
+        customerPhone ?? current.customer_phone ?? '',
+        JSON.stringify(items ?? safeJsonParse(current.items, [])),
+        specialNotes ?? current.special_notes ?? '',
+        itemTotal ?? current.item_total ?? 0,
+        extraThaliTotal ?? current.extra_thali_total ?? 0,
+        grandTotal ?? current.grand_total ?? 0,
+        udharStatus ?? current.udhar_status ?? 'none',
+        settledAt ?? current.settled_at ?? null,
+        id
+      ]
+    });
+    res.json({ success: true, message: 'Order updated in Turso DB!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Get Staff Members
+app.get('/api/staff', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM staff');
+    const staff = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      role: row.role,
+      phone: row.phone,
+      monthlySalary: Number(row.monthly_salary),
+      dailyRate: Number(row.daily_rate),
+      joiningDate: row.joining_date
+    }));
+    res.json({ success: true, staff });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Save/Update Staff Member
+app.post('/api/staff', async (req, res) => {
+  const { id, name, role, phone, monthlySalary, dailyRate, joiningDate } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO staff (id, name, role, phone, monthly_salary, daily_rate, joining_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              role = excluded.role,
+              phone = excluded.phone,
+              monthly_salary = excluded.monthly_salary,
+              daily_rate = excluded.daily_rate,
+              joining_date = excluded.joining_date`,
+      args: [id, name, role, phone, monthlySalary || 0, dailyRate || 0, joiningDate || new Date().toISOString().split('T')[0]]
+    });
+    res.json({ success: true, message: 'Staff saved to Turso DB!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Delete Staff Member
+app.delete('/api/staff/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await executeWithRetry({
+      sql: `DELETE FROM staff WHERE id = ?`,
+      args: [id]
+    });
+    res.json({ success: true, message: 'Staff deleted from Turso DB!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Get All Menu Items from Turso DB
+app.get('/api/menu', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM menu_items ORDER BY category, id');
+    const menuItems = result.rows.map(row => ({
+      id: row.id,
+      nameMr: row.name_mr,
+      nameEn: row.name_en,
+      category: row.category,
+      price: Number(row.price),
+      isThali: Boolean(row.is_thali),
+      available: Boolean(row.available),
+      descMr: row.desc_mr,
+      descEn: row.desc_en,
+      spicyLevel: row.spicy_level,
+      isSpecial: Boolean(row.is_special)
+    }));
+    res.json({ success: true, menuItems });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Bulk Seed / Save Menu Items to Turso DB
+app.post('/api/seed-menu', async (req, res) => {
+  const { items } = req.body;
+  try {
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid items array' });
+    }
+
+    for (const item of items) {
+      await executeWithRetry({
+        sql: `INSERT INTO menu_items (id, name_mr, name_en, category, price, is_thali, available, desc_mr, desc_en, spicy_level, is_special)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                name_mr = excluded.name_mr,
+                name_en = excluded.name_en,
+                category = excluded.category,
+                price = excluded.price,
+                is_thali = excluded.is_thali,
+                available = excluded.available,
+                desc_mr = excluded.desc_mr,
+                desc_en = excluded.desc_en,
+                spicy_level = excluded.spicy_level,
+                is_special = excluded.is_special`,
+        args: [
+          item.id,
+          item.nameMr,
+          item.nameEn,
+          item.category,
+          item.price,
+          item.isThali ? 1 : 0,
+          item.available !== false ? 1 : 0,
+          item.descMr || '',
+          item.descEn || '',
+          item.spicyLevel || 'Medium',
+          item.isSpecial ? 1 : 0
+        ]
+      });
+    }
+
+    res.json({ success: true, count: items.length, message: `✅ ${items.length} Menu items saved to Turso DB!` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Attendance Records
+app.get('/api/attendance', async (req, res) => {
+  try {
+    const [attendance, submitted] = await Promise.all([
+      executeWithRetry('SELECT * FROM attendance'),
+      executeWithRetry({
+        sql: `SELECT config_key, config_value FROM owner_config WHERE config_key LIKE ?`,
+        args: ['attendance_submitted_%']
+      })
+    ]);
+
+    const attendanceRecords = {};
+    attendance.rows.forEach((row) => {
+      attendanceRecords[`${row.date_key}_${row.staff_id}`] = row.status;
+    });
+
+    const submittedAttendanceDates = {};
+    submitted.rows.forEach((row) => {
+      const dateKey = row.config_key.replace('attendance_submitted_', '');
+      submittedAttendanceDates[dateKey] = row.config_value === 'true';
+    });
+
+    res.json({ success: true, attendanceRecords, submittedAttendanceDates });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/attendance', async (req, res) => {
+  const { dateKey, staffId, status } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO attendance (date_key, staff_id, status)
+            VALUES (?, ?, ?)
+            ON CONFLICT(date_key, staff_id) DO UPDATE SET status = excluded.status`,
+      args: [dateKey, staffId, status]
+    });
+    res.json({ success: true, message: 'Attendance saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/attendance/submitted', async (req, res) => {
+  const { dateKey, submitted = true } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO owner_config (config_key, config_value)
+            VALUES (?, ?)
+            ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value`,
+      args: [`attendance_submitted_${dateKey}`, submitted ? 'true' : 'false']
+    });
+    res.json({ success: true, message: 'Attendance lock saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/attendance/submitted/:dateKey', async (req, res) => {
+  try {
+    await executeWithRetry({
+      sql: 'DELETE FROM owner_config WHERE config_key = ?',
+      args: [`attendance_submitted_${req.params.dateKey}`]
+    });
+    res.json({ success: true, message: 'Attendance lock removed!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Salary Advances and Payments
+app.get('/api/salary-advances', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM salary_advances ORDER BY date DESC');
+    const advances = result.rows.map((row) => ({
+      id: row.id,
+      staffId: row.staff_id,
+      amount: Number(row.amount),
+      notes: row.notes || '',
+      date: row.date
+    }));
+    res.json({ success: true, advances });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/salary-advances', async (req, res) => {
+  const { id, staffId, amount, notes, date } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO salary_advances (id, staff_id, amount, notes, date)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              staff_id = excluded.staff_id,
+              amount = excluded.amount,
+              notes = excluded.notes,
+              date = excluded.date`,
+      args: [id, staffId, Number(amount || 0), notes || '', date || new Date().toISOString()]
+    });
+    res.json({ success: true, message: 'Salary advance saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/salary-payments', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM salary_payments ORDER BY paid_date DESC');
+    const salaryPayments = {};
+    result.rows.forEach((row) => {
+      salaryPayments[`${row.month_key}_${row.staff_id}`] = {
+        amount: Number(row.amount),
+        paidAt: row.paid_date
+      };
+    });
+    res.json({ success: true, salaryPayments });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/salary-payments', async (req, res) => {
+  const { staffId, amount, monthKey, paidAt } = req.body;
+  const paidDate = paidAt || new Date().toISOString();
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO salary_payments (id, staff_id, month_key, amount, paid_date)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              staff_id = excluded.staff_id,
+              month_key = excluded.month_key,
+              amount = excluded.amount,
+              paid_date = excluded.paid_date`,
+      args: [`${monthKey}_${staffId}`, staffId, monthKey, Number(amount || 0), paidDate]
+    });
+    res.json({ success: true, message: 'Salary payment saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. Custom Tables
+app.get('/api/custom-tables', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT table_name FROM custom_tables ORDER BY created_at ASC');
+    res.json({ success: true, customTables: result.rows.map((row) => row.table_name) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/custom-tables', async (req, res) => {
+  const { tableName } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO custom_tables (table_name, created_at)
+            VALUES (?, ?)
+            ON CONFLICT(table_name) DO UPDATE SET table_name = excluded.table_name`,
+      args: [tableName, new Date().toISOString()]
+    });
+    res.json({ success: true, message: 'Custom table saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/custom-tables/:tableName', async (req, res) => {
+  try {
+    await executeWithRetry({
+      sql: 'DELETE FROM custom_tables WHERE table_name = ?',
+      args: [decodeURIComponent(req.params.tableName)]
+    });
+    res.json({ success: true, message: 'Custom table removed!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+import fs from 'fs';
+
+// Save & Update SMTP Credentials Endpoint (Directly from UI)
+app.post('/api/save-smtp-config', async (req, res) => {
+  const { smtpUser, smtpPass, ownerEmail } = req.body;
+
+  try {
+    if (!smtpUser || !smtpPass) {
+      return res.status(400).json({ success: false, message: '❌ Gmail ID व १६-अंकी App Password आवश्यक आहे!' });
+    }
+
+    const cleanPass = smtpPass.replace(/\s+/g, '').trim();
+    const cleanUser = smtpUser.trim();
+    const cleanOwnerEmail = (ownerEmail || cleanUser).trim();
+
+    process.env.SMTP_USER = cleanUser;
+    process.env.SMTP_PASS = cleanPass;
+    process.env.VITE_OWNER_EMAIL = cleanOwnerEmail;
+
+    // Update .env file on disk
+    const envPath = path.resolve(process.cwd(), '.env');
+    let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+
+    const updateOrAddKey = (content, key, val) => {
+      const regex = new RegExp(`^${key}=.*$`, 'm');
+      if (regex.test(content)) {
+        return content.replace(regex, `${key}=${val}`);
+      }
+      return content + `\n${key}=${val}`;
+    };
+
+    envContent = updateOrAddKey(envContent, 'SMTP_USER', cleanUser);
+    envContent = updateOrAddKey(envContent, 'SMTP_PASS', cleanPass);
+    envContent = updateOrAddKey(envContent, 'VITE_OWNER_EMAIL', cleanOwnerEmail);
+
+    fs.writeFileSync(envPath, envContent, 'utf8');
+
+    // Verify SMTP connection immediately
+    let transporter = createTransporter(false);
+    try {
+      await transporter.verify();
+    } catch (err465) {
+      transporter = createTransporter(true);
+      await transporter.verify();
+    }
+
+    res.json({
+      success: true,
+      message: '✅ SMTP Credentials सेव्ह & व्हेरीफाय झाले!',
+      user: cleanUser
+    });
+  } catch (error) {
+    console.error('Save SMTP Error:', error.message);
+    const isBadCredentials = error.message?.includes('535-5.7.8') || error.message?.includes('BadCredentials');
+    res.status(500).json({
+      success: false,
+      message: isBadCredentials ? '❌ Google App Password अमान्य आहे! (Bad Credentials)' : '❌ SMTP सेव्ह व्हेरीफिकेशन अयशस्वी',
+      error: error.message,
+      guide: 'कृपया https://myaccount.google.com/apppasswords वरून 16-character App Password तयार करा.'
+    });
+  }
+});
+
+// Verify SMTP Connection Endpoint
+app.get('/api/verify-smtp', async (req, res) => {
+  try {
+    let transporter = createTransporter(false);
+    try {
+      await transporter.verify();
+    } catch (err465) {
+      transporter = createTransporter(true);
+      await transporter.verify();
+    }
+
+    res.json({
+      success: true,
+      message: '✅ Google SMTP कनेक्शन यशस्वीरित्या व्हेरीफाय झाले!',
+      user: process.env.SMTP_USER || process.env.VITE_OWNER_EMAIL
+    });
+  } catch (error) {
+    console.error('SMTP Verification Error:', error.message);
+    const isBadCredentials = error.message?.includes('535-5.7.8') || error.message?.includes('BadCredentials');
+    res.status(500).json({
+      success: false,
+      message: isBadCredentials ? '❌ Google SMTP पासवर्ड अमान्य आहे! (Invalid App Password)' : '❌ SMTP Verification Failed',
+      error: error.message,
+      guide: isBadCredentials ? 'गूगलने नियमित पासवर्ड बंद केला आहे. कृपया https://myaccount.google.com/apppasswords वरून १६-अंकी App Password तयार करा.' : 'नेटवर्क तपासा.'
+    });
+  }
+});
+
+// Send EOD Sales HTML Email Endpoint
+app.post('/api/send-email', async (req, res) => {
+  const { to, subject, htmlBody, textBody } = req.body;
+
+  try {
+    let transporter = createTransporter(false);
+    try {
+      await transporter.verify();
+    } catch (err465) {
+      transporter = createTransporter(true);
+      await transporter.verify();
+    }
+
+    const rawTo = to || process.env.VITE_OWNER_EMAIL || process.env.SMTP_USER || '';
+    const recipientList = Array.isArray(rawTo)
+      ? rawTo
+      : rawTo.split(',').map((e) => e.trim()).filter(Boolean);
+
+    const info = await transporter.sendMail({
+      from: `"हॉटेल आराध्या डायनिंग POS" <${process.env.SMTP_USER || process.env.VITE_OWNER_EMAIL}>`,
+      to: recipientList,
+      subject: subject || '🚩 [हॉटेल आराध्या] दैनिक विक्री अहवाल',
+      text: textBody,
+      html: htmlBody
+    });
+
+    console.log('✅ SMTP Email Sent Successfully to', recipientList.join(', '), '. Message ID:', info.messageId);
+
+    res.json({
+      success: true,
+      message: '✅ Verified Real-World SMTP Email Sent Successfully!',
+      messageId: info.messageId
+    });
+  } catch (error) {
+    console.error('❌ Failed to Send SMTP Email:', error.message);
+    const isBadCredentials = error.message?.includes('535-5.7.8') || error.message?.includes('BadCredentials');
+    res.status(500).json({
+      success: false,
+      message: isBadCredentials ? '❌ Google SMTP पासवर्ड अमान्य आहे! (Invalid App Password)' : '❌ Failed to Send Verified Email via SMTP',
+      error: error.message,
+      guide: isBadCredentials ? 'कृपया Google २-Step Verification ऑन करा आणि https://myaccount.google.com/apppasswords वरून 16-character App Password तयार करा.' : ''
+    });
+  }
+});
+
+const startServer = async () => {
+  await initDb();
+  app.listen(PORT, () => {
+    console.log(`=================================================`);
+    console.log(`🚀 Turso DB & SMTP Express Server Running on Port ${PORT}`);
+    console.log(`📧 SMTP Verification URL: http://localhost:${PORT}/api/verify-smtp`);
+    console.log(`=================================================`);
+  });
+};
+
+startServer();
