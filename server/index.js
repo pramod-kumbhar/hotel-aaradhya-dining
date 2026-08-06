@@ -230,17 +230,21 @@ app.put('/api/orders/:id', async (req, res) => {
   }
 });
 
-// 4. Get Staff Members
+// ===================================================
+// STAFF MANAGEMENT API ENDPOINTS (Clean Rebuild)
+// ===================================================
+
+// 1. Get All Staff Members
 app.get('/api/staff', async (req, res) => {
   try {
-    const result = await executeWithRetry('SELECT * FROM staff');
+    const result = await executeWithRetry('SELECT * FROM staff ORDER BY rowid DESC');
     const staff = result.rows.map(row => ({
       id: row.id,
       name: row.name,
       role: row.role,
       phone: row.phone,
-      monthlySalary: Number(row.monthly_salary),
-      dailyRate: Number(row.daily_rate),
+      monthlySalary: Number(row.monthly_salary || 0),
+      dailyRate: Number(row.daily_rate || 0),
       joiningDate: row.joining_date
     }));
     res.json({ success: true, staff });
@@ -249,9 +253,13 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
-// 5. Save/Update Staff Member
+// 2. Add / Update Staff Member
 app.post('/api/staff', async (req, res) => {
   const { id, name, role, phone, monthlySalary, dailyRate, joiningDate } = req.body;
+  if (!id || !name) {
+    return res.status(400).json({ success: false, error: 'Staff ID and Name are required' });
+  }
+
   try {
     await executeWithRetry({
       sql: `INSERT INTO staff (id, name, role, phone, monthly_salary, daily_rate, joining_date)
@@ -263,15 +271,23 @@ app.post('/api/staff', async (req, res) => {
               monthly_salary = excluded.monthly_salary,
               daily_rate = excluded.daily_rate,
               joining_date = excluded.joining_date`,
-      args: [id, name, role, phone, monthlySalary || 0, dailyRate || 0, joiningDate || new Date().toISOString().split('T')[0]]
+      args: [
+        id,
+        name,
+        role || 'Staff',
+        phone || '',
+        monthlySalary || 0,
+        dailyRate || 0,
+        joiningDate || new Date().toISOString().split('T')[0]
+      ]
     });
-    res.json({ success: true, message: 'Staff saved to Turso DB!' });
+    res.json({ success: true, message: 'Staff member saved successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 6. Delete Staff Member
+// 3. Delete Specific Staff Member (With cascading removal of linked attendance/salaries)
 app.delete('/api/staff/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -279,7 +295,32 @@ app.delete('/api/staff/:id', async (req, res) => {
       sql: `DELETE FROM staff WHERE id = ?`,
       args: [id]
     });
-    res.json({ success: true, message: 'Staff deleted from Turso DB!' });
+    await executeWithRetry({
+      sql: `DELETE FROM attendance WHERE staff_id = ?`,
+      args: [id]
+    }).catch(() => {});
+    await executeWithRetry({
+      sql: `DELETE FROM salary_advances WHERE staff_id = ?`,
+      args: [id]
+    }).catch(() => {});
+    await executeWithRetry({
+      sql: `DELETE FROM salary_payments WHERE staff_id = ?`,
+      args: [id]
+    }).catch(() => {});
+    res.json({ success: true, message: 'Staff member permanently deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Clear All Staff Members (Full Wipe)
+app.delete('/api/staff', async (req, res) => {
+  try {
+    await executeWithRetry(`DELETE FROM staff`);
+    await executeWithRetry(`DELETE FROM attendance`).catch(() => {});
+    await executeWithRetry(`DELETE FROM salary_advances`).catch(() => {});
+    await executeWithRetry(`DELETE FROM salary_payments`).catch(() => {});
+    res.json({ success: true, message: 'All staff records wiped' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

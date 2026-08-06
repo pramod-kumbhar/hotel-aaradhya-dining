@@ -8,12 +8,16 @@ let localClientInstance = null;
 
 const isVercel = process.env.VERCEL === '1' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
+let hasLoggedLocalFallback = false;
+
 // Get Turso Cloud DB Client
 export const getTursoDb = () => {
-  const tursoUrl = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
+  const tursoUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+  const authToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
-  if (tursoUrl && authToken) {
+  const isConfigured = tursoUrl && authToken && !tursoUrl.includes('your-database-name') && !authToken.includes('your_turso_database');
+
+  if (isConfigured) {
     if (!tursoClientInstance) {
       tursoClientInstance = createClient({ url: tursoUrl, authToken });
     }
@@ -26,8 +30,8 @@ export const getTursoDb = () => {
 export const getLocalDb = () => {
   if (isVercel) {
     // On Vercel, read-only disk makes local file DB impossible. Return Turso client.
-    const tursoUrl = process.env.TURSO_DATABASE_URL;
-    const authToken = process.env.TURSO_AUTH_TOKEN;
+    const tursoUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+    const authToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
     if (tursoUrl && authToken) {
       if (!tursoClientInstance) {
         tursoClientInstance = createClient({ url: tursoUrl, authToken });
@@ -52,6 +56,10 @@ export const executeWithRetry = async (stmt, maxRetries = 3, delayMs = 500) => {
   const sqlStr = (typeof stmt === 'string' ? stmt : stmt.sql || '').trim().toUpperCase();
   const isMutation = sqlStr.startsWith('INSERT') || sqlStr.startsWith('UPDATE') || sqlStr.startsWith('DELETE');
 
+  const tursoUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+  const authToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
+  const isTursoConfigured = tursoUrl && authToken && !tursoUrl.includes('your-database-name') && !authToken.includes('your_turso_database');
+
   const tursoClient = getTursoDb();
 
   // On non-Vercel environment, write to local SQLite asynchronously for offline backup
@@ -59,11 +67,19 @@ export const executeWithRetry = async (stmt, maxRetries = 3, delayMs = 500) => {
     try {
       const localClient = getLocalDb();
       if (localClient) {
-        localClient.execute(stmt).catch((e) => {
-          console.warn('⚠️ Local SQLite dual-write log:', e.message);
-        });
+        localClient.execute(stmt).catch((e) => {});
       }
     } catch (e) {}
+  }
+
+  // If Turso is not configured or in local mode, execute directly on local SQLite DB
+  if (!isTursoConfigured && !isVercel) {
+    if (!hasLoggedLocalFallback) {
+      console.log('ℹ️ Running in Local SQLite Mode (aaradhya_production.db)');
+      hasLoggedLocalFallback = true;
+    }
+    const localClient = getLocalDb();
+    return await localClient.execute(stmt);
   }
 
   // Attempt query on Turso Cloud DB with retry logic for serverless cold-starts
@@ -87,13 +103,11 @@ export const executeWithRetry = async (stmt, maxRetries = 3, delayMs = 500) => {
         throw err;
       }
 
-      // If Turso fails locally, fallback to local SQLite DB
-      console.warn(`🔄 Turso query failed (${err.message}). Using Local SQLite fallback.`);
+      // Fallback to local SQLite DB
       try {
         const localClient = getLocalDb();
         return await localClient.execute(stmt);
       } catch (localErr) {
-        console.error('❌ Local SQLite query error:', localErr.message);
         if (sqlStr.startsWith('SELECT')) {
           return { rows: [], columns: [] };
         }

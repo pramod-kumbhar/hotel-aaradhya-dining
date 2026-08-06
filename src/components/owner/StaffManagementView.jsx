@@ -4,7 +4,7 @@ import { Users, UserPlus, Calendar, IndianRupee, CheckCircle, XCircle, Clock, Se
 import confetti from 'canvas-confetti';
 
 export const StaffManagementView = () => {
-  const { lang, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember, attendanceRecords, markAttendance, submittedAttendanceDates, submitDailyAttendance, unlockDailyAttendance, salaryAdvances, salaryPayments, recordAdvance, paySalary, t } = useApp();
+  const { lang, staffMembers, addStaffMember, updateStaffMember, deleteStaffMember, clearAllStaffMembers, attendanceRecords, markAttendance, submittedAttendanceDates, submitDailyAttendance, unlockDailyAttendance, salaryAdvances, salaryPayments, recordAdvance, paySalary, t } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState('attendance'); // 'attendance', 'directory', 'payroll'
   const [attendanceViewMode, setAttendanceViewMode] = useState('daily'); // 'daily', 'weekly', 'monthly'
@@ -955,8 +955,8 @@ export const StaffManagementView = () => {
         <div className="space-y-3">
           
           {/* Top Control Header with Integrated Search & Add Action */}
-          <div className="bg-stone-900 p-3.5 rounded-2xl border border-stone-800 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-2.5">
-            <div className="relative w-full sm:w-72">
+          <div className="bg-stone-900 p-3.5 rounded-2xl border border-stone-800 shadow-lg flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="relative w-full md:max-w-md">
               <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
               <input
                 type="text"
@@ -967,25 +967,43 @@ export const StaffManagementView = () => {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setEditingStaff(null);
-                setStaffForm({
-                  name: '',
-                  role: 'Waiter',
-                  phone: '',
-                  monthlySalary: 12000,
-                  dailyRate: 400,
-                  joiningDate: new Date().toISOString().split('T')[0]
-                });
-                setIsAddStaffOpen(true);
-              }}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 transition shadow min-h-[38px] shrink-0"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>+ नवीन कर्मचारी जोडा</span>
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto">
+              {staffMembers && staffMembers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(lang === 'mr' ? 'तुम्हाला खरोखर सर्व कर्मचारी डेटाबेस मधून पूर्णपणे हटवायचा आहे का?' : 'Are you sure you want to permanently clear ALL staff records from the database?')) {
+                      clearAllStaffMembers();
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-700/50 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow min-h-[38px] whitespace-nowrap"
+                  title="सर्व स्टाफ डेटाबेस मधून हटवा"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  <span>{lang === 'mr' ? 'यादी साफ करा' : 'Clear All'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingStaff(null);
+                  setStaffForm({
+                    name: '',
+                    role: 'Waiter',
+                    phone: '',
+                    monthlySalary: 12000,
+                    dailyRate: 400,
+                    joiningDate: new Date().toISOString().split('T')[0]
+                  });
+                  setIsAddStaffOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 transition shadow min-h-[38px] whitespace-nowrap"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ नवीन कर्मचारी जोडा</span>
+              </button>
+            </div>
           </div>
 
           {/* STAFF DIRECTORY GRID OR TABLE */}
@@ -1044,8 +1062,13 @@ export const StaffManagementView = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => deleteStaffMember(staff.id)}
+                            onClick={() => {
+                              if (window.confirm(lang === 'mr' ? `तुम्हाला खरोखर '${staff.name}' यांना यादीतून पूर्णपणे काढून टाकायचे आहे का?` : `Are you sure you want to permanently delete '${staff.name}'?`)) {
+                                deleteStaffMember(staff.id);
+                              }
+                            }}
                             className="p-1.5 rounded-lg bg-stone-800 hover:bg-red-900/50 text-red-400 transition"
+                            title="कर्मचारी हटवा"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1081,7 +1104,11 @@ export const StaffManagementView = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => deleteStaffMember(staff.id)}
+                          onClick={() => {
+                            if (window.confirm(lang === 'mr' ? `तुम्हाला खरोखर '${staff.name}' यांना यादीतून पूर्णपणे काढून टाकायचे आहे का?` : `Are you sure you want to permanently delete '${staff.name}'?`)) {
+                              deleteStaffMember(staff.id);
+                            }
+                          }}
                           className="p-1.5 rounded-lg bg-stone-800 text-red-400 text-xs font-bold"
                           title="हटवा"
                         >

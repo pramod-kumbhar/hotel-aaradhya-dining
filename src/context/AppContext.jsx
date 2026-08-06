@@ -373,13 +373,9 @@ export const AppProvider = ({ children }) => {
           });
         });
       }
-      if (staffRes?.success && staffRes.staff?.length > 0) {
+      if (staffRes?.success && Array.isArray(staffRes.staff)) {
         setStaffMembers(staffRes.staff);
-      } else if (staffMembers?.length > 0) {
-        // Sync UI staff members to Turso DB
-        for (const s of staffMembers) {
-          postJson('/api/staff', s).catch(() => {});
-        }
+        localStorage.setItem('aaradhya_staff_db', JSON.stringify(staffRes.staff));
       }
       if (menuRes?.success && menuRes.menuItems?.length > 0) {
         setMenuItems(menuRes.menuItems);
@@ -436,22 +432,40 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('aaradhya_advances_db', JSON.stringify(salaryAdvances));
   }, [salaryAdvances]);
 
-  // Staff Handlers (With Turso DB Sync)
+  // Staff Handlers (Clean Architecture)
   const addStaffMember = async (newStaff) => {
-    const id = `stf-${Date.now()}`;
+    const id = newStaff.id || `stf-${Date.now()}`;
     const item = { ...newStaff, id };
-    setStaffMembers((prev) => [...prev, item]);
+    setStaffMembers((prev) => {
+      const updated = [item, ...prev.filter((s) => s.id !== id)];
+      localStorage.setItem('aaradhya_staff_db', JSON.stringify(updated));
+      return updated;
+    });
     await postJson('/api/staff', item);
   };
 
   const updateStaffMember = async (updatedStaff) => {
-    setStaffMembers((prev) => prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s)));
+    setStaffMembers((prev) => {
+      const updated = prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s));
+      localStorage.setItem('aaradhya_staff_db', JSON.stringify(updated));
+      return updated;
+    });
     await postJson('/api/staff', updatedStaff);
   };
 
   const deleteStaffMember = async (staffId) => {
-    setStaffMembers((prev) => prev.filter((s) => s.id !== staffId));
+    setStaffMembers((prev) => {
+      const updated = prev.filter((s) => s.id !== staffId);
+      localStorage.setItem('aaradhya_staff_db', JSON.stringify(updated));
+      return updated;
+    });
     await safeFetchJson(`/api/staff/${staffId}`, { method: 'DELETE' });
+  };
+
+  const clearAllStaffMembers = async () => {
+    setStaffMembers([]);
+    localStorage.setItem('aaradhya_staff_db', JSON.stringify([]));
+    await safeFetchJson('/api/staff', { method: 'DELETE' });
   };
 
   const markAttendance = (dateStr, staffId, status) => {
@@ -904,6 +918,7 @@ export const AppProvider = ({ children }) => {
         addStaffMember,
         updateStaffMember,
         deleteStaffMember,
+        clearAllStaffMembers,
         attendanceRecords,
         markAttendance,
         submittedAttendanceDates,
