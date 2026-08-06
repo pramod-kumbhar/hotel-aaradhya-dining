@@ -1,18 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { sendEodReportEmail } from '../../services/emailService';
 import { Mail, Lock, CheckCircle2, Send, X, ShieldAlert, Sparkles, Banknote, CreditCard, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const EodCloseModal = ({ isOpen, onClose }) => {
-  const { orders, ownerEmails, lang } = useApp();
-  const defaultEmails = ownerEmails?.length > 0 ? ownerEmails.join(', ') : (import.meta.env.VITE_OWNER_EMAIL || '');
-  const [ownerEmail, setOwnerEmail] = useState(defaultEmails);
+  const { orders, ownerEmails, addOwnerEmail, removeOwnerEmail, lang, saveEodReport } = useApp();
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [newEmailInput, setNewEmailInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [mailtoUrl, setMailtoUrl] = useState('');
 
+  // Keep ownerEmail synced with AppContext ownerEmails array
+  useEffect(() => {
+    if (ownerEmails && ownerEmails.length > 0) {
+      setOwnerEmail(ownerEmails.join(', '));
+    } else {
+      setOwnerEmail(import.meta.env.VITE_OWNER_EMAIL || '');
+    }
+  }, [ownerEmails, isOpen]);
+
   if (!isOpen) return null;
+
+  const handleAddQuickEmail = (e) => {
+    e.preventDefault();
+    if (!newEmailInput || !newEmailInput.includes('@')) return;
+    addOwnerEmail(newEmailInput.trim());
+    setNewEmailInput('');
+  };
 
   // Filter today's completed orders
   const todayStr = new Date().toISOString().split('T')[0];
@@ -65,12 +81,18 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
 
   const handleSendEmail = async (e) => {
     e.preventDefault();
+    if (!ownerEmail || ownerEmail.trim().length === 0) {
+      alert(lang === 'mr' ? 'कृपया किमान एक मालक ई-मेल प्रविष्ट करा!' : 'Please enter at least one owner email!');
+      return;
+    }
+
     setIsSending(true);
 
+    await saveEodReport?.(reportData).catch(() => {});
     const res = await sendEodReportEmail(reportData, ownerEmail);
     setIsSending(false);
     setSentSuccess(true);
-    if (res.mailtoUrl) {
+    if (res?.mailtoUrl) {
       setMailtoUrl(res.mailtoUrl);
     }
 
@@ -148,27 +170,68 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSendEmail} className="space-y-3">
-          <div>
-            <div className="flex items-center justify-between gap-1 mb-1">
-              <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-amber-400" />
-                <span>हॉटेल मालकांचे ई-मेल आयडी *</span>
-              </label>
-              <span className="text-[10px] text-amber-400 font-medium">कॉमा (,) ने जोडा</span>
+        {/* Dynamic Registered Owner Recipient List Management */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-amber-400" />
+              <span>ई-मेल प्राप्तकर्ते मालक ({ownerEmails?.length || 0}) *</span>
+            </label>
+          </div>
+
+          {/* Recipient Email Badges */}
+          {ownerEmails && ownerEmails.length > 0 ? (
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {ownerEmails.map((email, idx) => (
+                <div key={idx} className="flex items-center justify-between bg-stone-950 px-2.5 py-1.5 rounded-xl border border-stone-800 text-xs">
+                  <span className="font-mono text-amber-300 truncate text-[11px]">{email}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeOwnerEmail(email)}
+                    className="p-1 text-stone-400 hover:text-red-400 transition ml-2 shrink-0"
+                    title="हा ई-मेल काढून टाका"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
-            
+          ) : null}
+
+          {/* Quick Add Email Input */}
+          <div className="flex gap-1.5 pt-1">
+            <input
+              type="email"
+              placeholder="उदा. newowner@gmail.com"
+              value={newEmailInput}
+              onChange={(e) => setNewEmailInput(e.target.value)}
+              className="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-2.5 py-1.5 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 font-mono"
+            />
+            <button
+              type="button"
+              onClick={handleAddQuickEmail}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 text-xs font-bold shrink-0 transition"
+            >
+              + जोडा
+            </button>
+          </div>
+
+          {/* Comma-separated Manual Input Box */}
+          <div>
+            <span className="text-[10px] text-stone-400 font-medium block mb-1">किंवा थेट खाली ई-मेल प्रविष्ट करा (कॉमाने वेगळे करा):</span>
             <textarea
               required
               rows={2}
-              placeholder="ई-मेल आयडी प्रविष्ट करा..."
+              placeholder="उदा. owner1@gmail.com, owner2@gmail.com"
               value={ownerEmail}
               onChange={(e) => setOwnerEmail(e.target.value)}
               className="w-full bg-stone-950 border border-amber-600/40 rounded-xl p-2.5 text-xs text-amber-300 font-medium placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none font-mono"
             />
           </div>
+        </div>
 
+        {/* Form Submit Button */}
+        <form onSubmit={handleSendEmail} className="space-y-3 pt-1">
           {!sentSuccess ? (
             <button
               type="submit"
@@ -208,4 +271,3 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     </div>
   );
 };
-

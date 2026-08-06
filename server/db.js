@@ -3,63 +3,113 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let activeClient = null;
-let isLocalFallback = false;
+let tursoClientInstance = null;
+let localClientInstance = null;
 
-// Create Turso Database Client (Turso Cloud DB or Fallback Local SQLite DB)
-export const getDb = (forceLocal = false) => {
-  if (activeClient && !forceLocal) return activeClient;
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 
+// Get Turso Cloud DB Client
+export const getTursoDb = () => {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (tursoUrl && authToken && !forceLocal && !isLocalFallback) {
-    try {
-      activeClient = createClient({ url: tursoUrl, authToken });
-      return activeClient;
-    } catch (e) {
-      console.warn('⚠️ Could not connect to Turso Cloud DB, falling back to local SQLite');
+  if (tursoUrl && authToken) {
+    if (!tursoClientInstance) {
+      tursoClientInstance = createClient({ url: tursoUrl, authToken });
+    }
+    return tursoClientInstance;
+  }
+  return getLocalDb();
+};
+
+// Get Local SQLite DB Client (Only for local development, bypassed on Vercel)
+export const getLocalDb = () => {
+  if (isVercel) {
+    // On Vercel, read-only disk makes local file DB impossible. Return Turso client.
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    if (tursoUrl && authToken) {
+      if (!tursoClientInstance) {
+        tursoClientInstance = createClient({ url: tursoUrl, authToken });
+      }
+      return tursoClientInstance;
     }
   }
 
-  isLocalFallback = true;
-  activeClient = createClient({ url: 'file:aaradhya_production.db' });
-  return activeClient;
+  if (!localClientInstance) {
+    localClientInstance = createClient({ url: 'file:aaradhya_production.db' });
+  }
+  return localClientInstance;
 };
 
-// Execute statement with auto-retry for Turso 503 cold-starts & seamless local SQLite fallback
-export const executeWithRetry = async (stmt, maxRetries = 3, delayMs = 800) => {
-  let client = getDb();
+export const getDb = (forceLocal = false) => {
+  if (forceLocal && !isVercel) return getLocalDb();
+  return getTursoDb();
+};
+
+// Execute statement with auto-retry for Turso cold-starts & seamless local fallback
+export const executeWithRetry = async (stmt, maxRetries = 3, delayMs = 500) => {
+  const sqlStr = (typeof stmt === 'string' ? stmt : stmt.sql || '').trim().toUpperCase();
+  const isMutation = sqlStr.startsWith('INSERT') || sqlStr.startsWith('UPDATE') || sqlStr.startsWith('DELETE');
+
+  const tursoClient = getTursoDb();
+
+  // On non-Vercel environment, write to local SQLite asynchronously for offline backup
+  if (isMutation && !isVercel) {
+    try {
+      const localClient = getLocalDb();
+      if (localClient) {
+        localClient.execute(stmt).catch((e) => {
+          console.warn('⚠️ Local SQLite dual-write log:', e.message);
+        });
+      }
+    } catch (e) {}
+  }
+
+  // Attempt query on Turso Cloud DB with retry logic for serverless cold-starts
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await client.execute(stmt);
+      const res = await tursoClient.execute(stmt);
+      return res;
     } catch (err) {
       const is503 = err.message?.includes('503') || err.status === 503 || err.message?.includes('unavailable');
       if (is503 && attempt < maxRetries) {
-        console.warn(`⚠️ Turso Cloud DB waking up (Attempt ${attempt}/${maxRetries}). Retrying in ${delayMs}ms...`);
-        await new Promise(res => setTimeout(res, delayMs));
+        await new Promise((res) => setTimeout(res, delayMs));
         continue;
       }
-      
-      if (!isLocalFallback && (!is503 || attempt === maxRetries)) {
-        console.warn('🔄 Turso Cloud DB unreachable. Switching seamlessly to Local SQLite Database...');
-        client = getDb(true);
-        try {
-          return await client.execute(stmt);
-        } catch (localErr) {
-          throw localErr;
+
+      // On Vercel, do not attempt local SQLite disk write if Turso fails
+      if (isVercel) {
+        console.error(`❌ Turso query error on Vercel:`, err.message);
+        if (sqlStr.startsWith('SELECT')) {
+          return { rows: [], columns: [] };
         }
+        throw err;
       }
-      throw err;
+
+      // If Turso fails locally, fallback to local SQLite DB
+      console.warn(`🔄 Turso query failed (${err.message}). Using Local SQLite fallback.`);
+      try {
+        const localClient = getLocalDb();
+        return await localClient.execute(stmt);
+      } catch (localErr) {
+        console.error('❌ Local SQLite query error:', localErr.message);
+        if (sqlStr.startsWith('SELECT')) {
+          return { rows: [], columns: [] };
+        }
+        throw localErr;
+      }
     }
   }
 };
 
 // Initialize Production DB Tables
 export const initDb = async () => {
-  let client = getDb();
+  const client = getDb();
 
   const createTables = async (dbClient) => {
+    if (!dbClient) return;
+
     // 1. Orders Table
     await dbClient.execute(`
       CREATE TABLE IF NOT EXISTS orders (
@@ -228,14 +278,16 @@ export const initDb = async () => {
 
   try {
     await createTables(client);
-    console.log('✅ Production Database Tables Initialized Successfully!');
+    console.log('✅ Turso Cloud DB Tables Initialized Successfully!');
   } catch (error) {
-    console.error('❌ Cloud DB Write Error (Token Read-Only):', error.message);
-    console.log('🔄 Switching to Local SQLite Database (file:aaradhya_production.db) for uninterrupted operation...');
-    client = getDb(true);
+    console.error('⚠️ Turso Cloud DB Init Warning:', error.message);
+  }
+
+  if (!isVercel) {
     try {
-      await createTables(client);
-      console.log('✅ Local SQLite Database Tables Initialized Successfully!');
+      const localDbClient = getDb(true);
+      await createTables(localDbClient);
+      console.log('✅ Local SQLite (aaradhya_production.db) Tables Initialized Successfully!');
     } catch (localErr) {
       console.error('❌ Local SQLite Init Error:', localErr.message);
     }

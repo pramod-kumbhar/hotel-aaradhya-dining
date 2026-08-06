@@ -3,7 +3,7 @@ export const TRANSLATIONS = {
     // Header & Navigation
     hotelName: "हॉटेल आराध्या डायनिंग",
     hotelSubtitle: "दरपत्रक (शाकाहारी आणि मांसाहारी)",
-    customerMode: "ग्राहक मोड",
+    customerMode: "डिजिटल मेन्यू",
     ownerMode: "मा. मालक डॅशबोर्ड",
     langSwitch: "English",
     cart: "माझी ऑर्डर",

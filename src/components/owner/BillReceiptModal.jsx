@@ -24,7 +24,7 @@ export const BillReceiptModal = ({ isOpen, onClose, order }) => {
     const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
     
     const itemsList = order.items.map(i => `• ${i.nameMr} x ${i.quantity} = ₹${i.price * i.quantity}`).join('%0A');
-    const msg = `🚩 *हॉटेल आराध्या डायनिंग - डिजिटल बिल पावती* 🚩%0A%0A*ऑर्डर क्र:* ${order.id}%0A*स्थान/टेबल:* ${order.tableNo}%0A*ग्राहक:* ${encodeURIComponent(order.customerName || 'ग्राहक')}%0A%0A*ऑर्डर केलेले पदार्थ:*%0A${itemsList}%0A%0A*एकूण देय बिल: ₹${order.grandTotal}/-*%0A*पेमेंट प्रकार:* ${order.paymentMethod === 'Udhar' ? '📝 उधार खाते' : order.paymentMethod === 'UPI' ? '📱 UPI' : '💵 Cash'}%0A%0Aधन्यवाद! पुन्हा अवश्य या! 🙏`;
+    const msg = `🚩 *हॉटेल आराध्या डायनिंग - डिजिटल बिल पावती* 🚩%0A%0A*ऑर्डर क्र:* ${order.id}%0A*स्थान/टेबल:* ${order.tableNo}%0A*ग्राहक:* ${encodeURIComponent(order.customerName || '')}%0A%0A*ऑर्डर केलेले पदार्थ:*%0A${itemsList}%0A%0A*एकूण देय बिल: ₹${order.grandTotal}/-*%0A*पेमेंट प्रकार:* ${order.paymentMethod === 'Udhar' ? '📝 उधार खाते' : order.paymentMethod === 'UPI' ? '📱 UPI' : '💵 Cash'}%0A%0Aधन्यवाद! पुन्हा अवश्य या! 🙏`;
     
     window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${msg}`, '_blank');
   };
@@ -100,7 +100,7 @@ export const BillReceiptModal = ({ isOpen, onClose, order }) => {
             <div className="col-span-2 pt-1 border-t border-stone-800/80 flex items-center justify-between text-xs">
               <div>
                 <span className="text-stone-400">ग्राहक नाव: </span>
-                <strong className="text-stone-100">{order.customerName || 'काउंटर ग्राहक'}</strong>
+                <strong className="text-stone-100">{order.customerName || '-'}</strong>
               </div>
               {order.customerPhone && (
                 <div>

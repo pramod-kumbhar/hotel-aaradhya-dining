@@ -13,6 +13,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+codex-*.log
+
+# Local database maintenance scripts that can mutate production data
+server/db-comparative-audit.js
+server/purge-and-verify-turso.js
+server/test-udhar-db-flow.js
 
 .DS_Store
 Thumbs.db

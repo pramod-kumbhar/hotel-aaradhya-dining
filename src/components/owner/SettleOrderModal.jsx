@@ -123,7 +123,7 @@ export const SettleOrderModal = ({ isOpen, onClose, order, onPrintBill }) => {
                     : 'bg-stone-950 text-stone-400 border-stone-800 hover:text-stone-200'
                 }`}
               >
-                <CreditCard className="w-4 h-4 text-amber-400" />
+                <Smartphone className="w-4 h-4 text-amber-400" />
                 <span>📱 UPI QR</span>
               </button>
 

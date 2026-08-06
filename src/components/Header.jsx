@@ -55,6 +55,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
                 <span>{lang === 'mr' ? 'स्वागत' : 'Welcome'}</span>
               </button>
 
+
               {/* 1. Table POS */}
               <button
                 onClick={() => {
@@ -184,7 +185,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
 
             {/* Header Right Action Controls */}
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* CART QUICK BUTTON */}
+              {/* ORDER CART QUICK BUTTON */}
               <button
                 onClick={() => {
                   if (onOpenCart) onOpenCart();
@@ -194,9 +195,9 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
                     ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-950/40 border-amber-300 animate-pulse'
                     : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
                 }`}
-                title={lang === 'mr' ? 'ऑर्डर काउंटर (Cart)' : 'Cart'}
+                title={lang === 'mr' ? 'ऑर्डर कार्ट (Cart Drawer)' : 'Order Cart'}
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingCart className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-black font-mono">
                   {totalCartCount}
                 </span>
@@ -217,12 +218,12 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <div className="no-print md:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/80 px-3 py-1.5 flex items-center justify-around shadow-[0_-10px_25px_rgba(0,0,0,0.8)]">
+      <div className="no-print md:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/80 px-2 py-1.5 flex items-center justify-between overflow-x-auto no-scrollbar shadow-[0_-10px_25px_rgba(0,0,0,0.8)] gap-1">
         
         {/* 0. Home / Welcome */}
         <button
           onClick={() => setActiveTab('welcome')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
             activeTab === 'welcome'
               ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
               : 'text-stone-400 hover:text-stone-200'
@@ -232,13 +233,14 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
           <span className="text-[10px] font-bold tracking-tight">{lang === 'mr' ? 'मुख्य' : 'Home'}</span>
         </button>
 
+
         {/* 1. Table POS */}
         <button
           onClick={() => {
             setMode('pos');
             setActiveTab('pos');
           }}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
             mode === 'pos' && activeTab === 'pos'
               ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
               : 'text-stone-400 hover:text-stone-200'
@@ -251,7 +253,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
         {/* 2. Kitchen Display */}
         <button
           onClick={() => setActiveTab('kds')}
-          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 ${
+          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
             activeTab === 'kds'
               ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
               : 'text-stone-400 hover:text-stone-200'
@@ -267,7 +269,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
             {/* 3. Staff Attendance (Owner Only) */}
             <button
               onClick={() => setActiveTab('staff')}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
                 activeTab === 'staff'
                   ? 'bg-emerald-500/15 text-emerald-400 font-extrabold border border-emerald-500/30 shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
@@ -280,7 +282,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
             {/* 3.5 Udhar Credit Register (Owner Only) */}
             <button
               onClick={() => setActiveTab('udhar')}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
                 activeTab === 'udhar'
                   ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
@@ -293,7 +295,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
             {/* 4. Analytics / Reports (Owner Only) */}
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
                 activeTab === 'analytics'
                   ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
@@ -306,7 +308,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
             {/* 5. Menu Manager (Owner Only) */}
             <button
               onClick={() => setActiveTab('menu')}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
                 activeTab === 'menu'
                   ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
                   : 'text-stone-400 hover:text-stone-200'
@@ -319,7 +321,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
             {/* 6. Lock Owner Vault */}
             <button
               onClick={lockOwnerVault}
-              className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-rose-400 hover:text-rose-200 transition-all duration-200"
+              className="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 text-rose-400 hover:text-rose-200 transition-all duration-200"
             >
               <Lock className="w-4 h-4 text-rose-400" />
               <span className="text-[10px] font-bold tracking-tight">{lang === 'mr' ? 'लॉक' : 'Lock'}</span>
@@ -329,7 +331,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
           /* Locked State: Show Owner Vault PIN Unlock Button */
           <button
             onClick={onOpenPinModal}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-all duration-200 shadow-sm"
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl shrink-0 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-all duration-200 shadow-sm"
           >
             <KeyRound className="w-4 h-4 text-amber-400 animate-pulse" />
             <span className="text-[10px] font-bold tracking-tight">{lang === 'mr' ? 'मालक PIN' : 'Owner PIN'}</span>

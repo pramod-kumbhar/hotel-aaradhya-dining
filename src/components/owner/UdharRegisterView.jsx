@@ -4,7 +4,7 @@ import { BookOpen, Search, CheckCircle2, User, Smartphone, Calendar, Banknote, C
 import confetti from 'canvas-confetti';
 
 export const UdharRegisterView = () => {
-  const { orders, setOrders, lang } = useApp();
+  const { orders, setOrders, lang, settleUdharPayment } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('pending'); // 'pending', 'cleared', 'all'
   const [settlingOrderId, setSettlingOrderId] = useState(null);
@@ -65,20 +65,24 @@ export const UdharRegisterView = () => {
     document.body.removeChild(link);
   };
 
-  const handleSettleUdhar = (orderId, newPaymentMethod) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id === orderId) {
-          return {
-            ...o,
-            udharStatus: 'cleared',
-            clearedPaymentMethod: newPaymentMethod,
-            settledAt: new Date().toISOString()
-          };
-        }
-        return o;
-      })
-    );
+  const handleSettleUdhar = async (orderId, newPaymentMethod) => {
+    if (settleUdharPayment) {
+      await settleUdharPayment(orderId, newPaymentMethod);
+    } else {
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id === orderId) {
+            return {
+              ...o,
+              udharStatus: 'cleared',
+              clearedPaymentMethod: newPaymentMethod,
+              settledAt: new Date().toISOString()
+            };
+          }
+          return o;
+        })
+      );
+    }
 
     confetti({
       particleCount: 70,
@@ -236,7 +240,7 @@ export const UdharRegisterView = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-stone-100 font-extrabold text-sm">
                       <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>{order.customerName || 'अज्ञात ग्राहक'}</span>
+                      <span>{order.customerName || '-'}</span>
                     </div>
 
                     <button
@@ -309,14 +313,14 @@ export const UdharRegisterView = () => {
                     <p className="text-xs font-bold text-amber-300">
                       {order.customerName} यांच्याकडून पेमेंट कसे प्राप्त झाले?
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
                       <button
                         type="button"
                         onClick={() => handleSettleUdhar(order.id, 'Cash')}
-                        className="py-2 px-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1 transition"
+                        className="py-2 px-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition"
                       >
                         <Banknote className="w-3.5 h-3.5" />
-                        <span>💵 Cash द्वारे</span>
+                        <span>💵 Cash</span>
                       </button>
 
                       <button
@@ -351,7 +355,7 @@ export const UdharRegisterView = () => {
           <div className="bg-stone-900 border border-amber-600/40 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <div>
-                <h3 className="text-base font-black text-amber-400">{inspectOrder.customerName || 'उधार ग्राहक'}</h3>
+                <h3 className="text-base font-black text-amber-400">{inspectOrder.customerName || '-'}</h3>
                 <p className="text-xs text-stone-400">ऑर्डर क्र. {inspectOrder.id} • {inspectOrder.tableNo}</p>
               </div>
               <button
@@ -406,7 +410,7 @@ export const UdharRegisterView = () => {
                   onClick={() => handleSettleUdhar(inspectOrder.id, 'UPI')}
                   className="py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow"
                 >
-                  <CreditCard className="w-4 h-4" />
+                  <Smartphone className="w-4 h-4" />
                   <span>📱 UPI जमा</span>
                 </button>
               </div>

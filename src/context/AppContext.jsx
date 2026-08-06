@@ -5,27 +5,44 @@ import { TRANSLATIONS } from '../data/translations';
 const AppContext = createContext();
 
 const BROADCAST_CHANNEL_NAME = 'aaradhya_dining_orders_channel';
-const LOCAL_STORAGE_ORDERS_KEY = 'aaradhya_orders_db_v1';
+const LOCAL_STORAGE_ORDERS_KEY = 'aaradhya_orders_db_v2';
 const LOCAL_STORAGE_MENU_KEY = 'aaradhya_menu_db_v3';
 
 // Production Clean Setup (Zero dummy records for real hotel deployment)
 const SEED_ORDERS = [];
 
-const API_EXPRESS_PORT = 'http://localhost:5000';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').trim();
+
+const getApiUrl = (path) => {
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  if (!API_BASE_URL) return cleanPath;
+  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  return `${baseUrl}${cleanPath}`;
+};
 
 const safeFetchJson = async (url, options = {}) => {
-  // 1. Try relative URL first (Vite proxy /api)
-  try {
-    const res = await fetch(url, options);
-    if (res.ok) return await res.json();
-  } catch (e) {}
+  const primaryUrl = getApiUrl(url);
 
-  // 2. Try direct Express port 5000 fallback
   try {
-    const directUrl = `${API_EXPRESS_PORT}${url.startsWith('/') ? url : '/' + url}`;
-    const res = await fetch(directUrl, options);
-    if (res.ok) return await res.json();
-  } catch (e) {}
+    const res = await fetch(primaryUrl, options);
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (e) {
+    console.warn(`API fetch notice [${primaryUrl}]:`, e.message);
+  }
+
+  // Fallback to relative URL if custom VITE_API_URL failed
+  if (API_BASE_URL) {
+    try {
+      const cleanPath = url.startsWith('/') ? url : '/' + url;
+      const res = await fetch(cleanPath, options);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {}
+  }
 
   return null;
 };
@@ -249,6 +266,16 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('aaradhya_salary_payments_db', JSON.stringify(salaryPayments));
   }, [salaryPayments]);
 
+  // EOD Close Reports State
+  const [eodReports, setEodReports] = useState(() => {
+    const saved = localStorage.getItem('aaradhya_eod_reports_db');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aaradhya_eod_reports_db', JSON.stringify(eodReports));
+  }, [eodReports]);
+
   // Dynamic Table Management Setup (10 Base Tables + Parcel)
   const DEFAULT_TABLES = ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10', 'Parcel'];
 
@@ -263,18 +290,22 @@ export const AppProvider = ({ children }) => {
 
   const allTables = [...DEFAULT_TABLES, ...customTables];
 
-  const addCustomTable = (customName) => {
+  const addCustomTable = async (customName) => {
     const name = customName?.trim() || `Table ${allTables.length} (Custom)`;
     if (allTables.includes(name)) {
       return { success: false, error: lang === 'mr' ? 'या नावाचे टेबल आधीच आहे!' : 'Table already exists!' };
     }
-    setCustomTables((prev) => [...prev, name]);
-    postJson('/api/custom-tables', { tableName: name }).catch(() => {});
+    setCustomTables((prev) => {
+      const updated = [...prev, name];
+      localStorage.setItem('aaradhya_custom_tables_db', JSON.stringify(updated));
+      return updated;
+    });
+    await postJson('/api/custom-tables', { tableName: name });
     playNotificationSound(lang === 'mr' ? `नवीन टेबल '${name}' जोडले आहे!` : `Custom table '${name}' added!`);
     return { success: true, tableName: name };
   };
 
-  const removeCustomTable = (tableName) => {
+  const removeCustomTable = async (tableName) => {
     if (DEFAULT_TABLES.includes(tableName)) {
       return { success: false, error: lang === 'mr' ? 'मूळ टेबल काढता येत नाही!' : 'Default tables cannot be removed!' };
     }
@@ -282,8 +313,12 @@ export const AppProvider = ({ children }) => {
     if (hasActiveOrder) {
       return { success: false, error: lang === 'mr' ? 'टेबलवर चालू ऑर्डर असल्यामुळे काढता येत नाही!' : 'Cannot remove table with active order!' };
     }
-    setCustomTables((prev) => prev.filter((t) => t !== tableName));
-    fetch(`/api/custom-tables/${encodeURIComponent(tableName)}`, { method: 'DELETE' }).catch(() => {});
+    setCustomTables((prev) => {
+      const updated = prev.filter((t) => t !== tableName);
+      localStorage.setItem('aaradhya_custom_tables_db', JSON.stringify(updated));
+      return updated;
+    });
+    await safeFetchJson(`/api/custom-tables/${encodeURIComponent(tableName)}`, { method: 'DELETE' });
     playNotificationSound(lang === 'mr' ? `कस्टम टेबल '${tableName}' हटवले आहे.` : `Custom table '${tableName}' removed.`);
     return { success: true };
   };
@@ -298,7 +333,11 @@ export const AppProvider = ({ children }) => {
       const nextNum = allTables.length;
       const autoCustomName = `Table ${nextNum} (Custom)`;
       if (!customTables.includes(autoCustomName)) {
-        setCustomTables((prev) => [...prev, autoCustomName]);
+        setCustomTables((prev) => {
+          const updated = [...prev, autoCustomName];
+          localStorage.setItem('aaradhya_custom_tables_db', JSON.stringify(updated));
+          return updated;
+        });
         postJson('/api/custom-tables', { tableName: autoCustomName }).catch(() => {});
         playNotificationSound(
           lang === 'mr'
@@ -309,55 +348,75 @@ export const AppProvider = ({ children }) => {
     }
   }, [orders, customTables]);
 
-  // 1. Fetch Initial Data from Turso Production DB API on Mount & Sync Local Records
-  useEffect(() => {
-    const fetchTursoData = async () => {
-      try {
-        const [ordersRes, staffRes, menuRes, attendanceRes, advancesRes, paymentsRes, tablesRes] = await Promise.all([
-          safeFetchJson('/api/orders'),
-          safeFetchJson('/api/staff'),
-          safeFetchJson('/api/menu'),
-          safeFetchJson('/api/attendance'),
-          safeFetchJson('/api/salary-advances'),
-          safeFetchJson('/api/salary-payments'),
-          safeFetchJson('/api/custom-tables')
-        ]);
+  // 1. Fetch Data from Turso Production DB API & Sync Real-Time Records
+  const fetchTursoData = async () => {
+    try {
+      const [ordersRes, staffRes, menuRes, attendanceRes, advancesRes, paymentsRes, tablesRes, eodRes] = await Promise.all([
+        safeFetchJson('/api/orders'),
+        safeFetchJson('/api/staff'),
+        safeFetchJson('/api/menu'),
+        safeFetchJson('/api/attendance'),
+        safeFetchJson('/api/salary-advances'),
+        safeFetchJson('/api/salary-payments'),
+        safeFetchJson('/api/custom-tables'),
+        safeFetchJson('/api/eod-reports')
+      ]);
 
-        if (ordersRes?.success) {
-          setOrders(ordersRes.orders || []);
-        }
-        if (staffRes?.success && staffRes.staff?.length > 0) {
-          setStaffMembers(staffRes.staff);
-        } else if (staffMembers?.length > 0) {
-          // Sync UI staff members to Turso DB
-          for (const s of staffMembers) {
-            postJson('/api/staff', s).catch(() => {});
-          }
-        }
-        if (menuRes?.success && menuRes.menuItems?.length > 0) {
-          setMenuItems(menuRes.menuItems);
-        } else if (menuRes?.success && menuRes.menuItems?.length === 0) {
-          postJson('/api/seed-menu', { items: menuItems }).catch(() => {});
-        }
-        if (attendanceRes?.success) {
-          setAttendanceRecords(attendanceRes.attendanceRecords || {});
-          setSubmittedAttendanceDates(attendanceRes.submittedAttendanceDates || {});
-        }
-        if (advancesRes?.success) {
-          setSalaryAdvances(advancesRes.advances || []);
-        }
-        if (paymentsRes?.success) {
-          setSalaryPayments(paymentsRes.salaryPayments || {});
-        }
-        if (tablesRes?.success) {
-          setCustomTables(tablesRes.customTables || []);
-        }
-      } catch (e) {
-        console.log('Turso DB offline fallback active');
+      if (ordersRes?.success && Array.isArray(ordersRes.orders)) {
+        setOrders((prev) => {
+          const cancelledIds = new Set(prev.filter((o) => o.status === 'cancelled').map((o) => o.id));
+          return ordersRes.orders.map((o) => {
+            if (cancelledIds.has(o.id) && o.status !== 'cancelled') {
+              return { ...o, status: 'cancelled' };
+            }
+            return o;
+          });
+        });
       }
-    };
+      if (staffRes?.success && staffRes.staff?.length > 0) {
+        setStaffMembers(staffRes.staff);
+      } else if (staffMembers?.length > 0) {
+        // Sync UI staff members to Turso DB
+        for (const s of staffMembers) {
+          postJson('/api/staff', s).catch(() => {});
+        }
+      }
+      if (menuRes?.success && menuRes.menuItems?.length > 0) {
+        setMenuItems(menuRes.menuItems);
+      } else if (menuRes?.success && menuRes.menuItems?.length === 0) {
+        postJson('/api/seed-menu', { items: menuItems }).catch(() => {});
+      }
+      if (attendanceRes?.success) {
+        setAttendanceRecords(attendanceRes.attendanceRecords || {});
+        setSubmittedAttendanceDates(attendanceRes.submittedAttendanceDates || {});
+      }
+      if (advancesRes?.success) {
+        setSalaryAdvances(advancesRes.advances || []);
+      }
+      if (paymentsRes?.success) {
+        setSalaryPayments(paymentsRes.salaryPayments || {});
+      }
+      if (tablesRes?.success) {
+        const dbTables = tablesRes.customTables || [];
+        setCustomTables((prev) => {
+          const merged = Array.from(new Set([...prev, ...dbTables]));
+          localStorage.setItem('aaradhya_custom_tables_db', JSON.stringify(merged));
+          return merged;
+        });
+      }
+      if (eodRes?.success && eodRes.reports?.length > 0) {
+        setEodReports(eodRes.reports);
+      }
+    } catch (e) {
+      console.log('Turso DB offline fallback active');
+    }
+  };
 
+  // Real-time background polling every 3 seconds for zero-lag DB updates
+  useEffect(() => {
     fetchTursoData();
+    const interval = setInterval(fetchTursoData, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Sync staff, attendance & advances to localStorage
@@ -413,7 +472,7 @@ export const AppProvider = ({ children }) => {
       delete copy[dateStr];
       return copy;
     });
-    fetch(`/api/attendance/submitted/${dateStr}`, { method: 'DELETE' }).catch(() => {});
+    safeFetchJson(`/api/attendance/submitted/${dateStr}`, { method: 'DELETE' }).catch(() => {});
     playNotificationSound(lang === 'mr' ? 'हजेरी बदलासाठी अनलॉक केली आहे' : 'Attendance unlocked for editing');
   };
 
@@ -557,7 +616,7 @@ export const AppProvider = ({ children }) => {
     const newOrder = {
       id: newId,
       tableNo: orderData.tableNo || tableNo,
-      customerName: orderData.customerName || (lang === 'mr' ? 'ग्राहक' : 'Customer'),
+      customerName: orderData.customerName || '',
       customerPhone: orderData.customerPhone || '',
       timestamp: new Date().toISOString(),
       status: 'pending', // pending, preparing, ready, completed
@@ -573,13 +632,7 @@ export const AppProvider = ({ children }) => {
     setActiveOrderId(newId);
     clearCart();
 
-    try {
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrder)
-      });
-    } catch (e) {}
+    await postJson('/api/orders', newOrder).catch(() => {});
 
     playNotificationSound(lang === 'mr' ? 'नवीन ऑर्डर किचनमध्ये प्राप्त झाली आहे!' : 'New order received in kitchen!');
     return newOrder;
@@ -591,13 +644,7 @@ export const AppProvider = ({ children }) => {
       prev.map((ord) => (ord.id === orderId ? { ...ord, status: newStatus } : ord))
     );
 
-    try {
-      await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-    } catch (e) {}
+    await postJson(`/api/orders/${orderId}`, { status: newStatus }, 'PUT').catch(() => {});
 
     const msg =
       newStatus === 'preparing'
@@ -610,17 +657,28 @@ export const AppProvider = ({ children }) => {
 
   // Cancel Order (Owner / Staff with Turso DB Sync)
   const cancelOrder = async (orderId) => {
+    let targetOrder = null;
     setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, status: 'cancelled' } : ord))
+      prev.map((ord) => {
+        if (ord.id === orderId) {
+          targetOrder = { ...ord, status: 'cancelled' };
+          return targetOrder;
+        }
+        return ord;
+      })
     );
 
+    // Save to localStorage immediately
     try {
-      await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' })
-      });
+      const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+      if (savedStr) {
+        const parsed = JSON.parse(savedStr);
+        const updated = parsed.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o));
+        localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(updated));
+      }
     } catch (e) {}
+
+    await postJson(`/api/orders/${orderId}`, { status: 'cancelled' }, 'PUT').catch(() => {});
 
     playNotificationSound(lang === 'mr' ? 'ऑर्डर रद्द करण्यात आली आहे!' : 'Order cancelled successfully!');
   };
@@ -630,11 +688,7 @@ export const AppProvider = ({ children }) => {
     setOrders((prev) =>
       prev.map((ord) => (ord.id === orderId ? { ...ord, paymentMethod: newPaymentMethod } : ord))
     );
-    fetch(`/api/orders/${orderId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentMethod: newPaymentMethod })
-    }).catch(() => {});
+    postJson(`/api/orders/${orderId}`, { paymentMethod: newPaymentMethod }, 'PUT').catch(() => {});
   };
 
   // Settle and complete order with payment method (Cash, UPI, Udhar with Turso DB Sync)
@@ -657,25 +711,88 @@ export const AppProvider = ({ children }) => {
       })
     );
 
-    try {
-      await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'completed',
-          paymentMethod: paymentMethod || 'Cash',
-          udharStatus: isUdhar ? 'pending' : 'none',
-          customerName,
-          customerPhone,
-          settledAt: isUdhar ? null : new Date().toISOString()
-        })
-      });
-    } catch (e) {}
+    await postJson(`/api/orders/${orderId}`, {
+      status: 'completed',
+      paymentMethod: paymentMethod || 'Cash',
+      udharStatus: isUdhar ? 'pending' : 'none',
+      customerName,
+      customerPhone,
+      settledAt: isUdhar ? null : new Date().toISOString()
+    }, 'PUT').catch(() => {});
 
     const soundMsg = isUdhar
       ? (lang === 'mr' ? 'उधारी बिल प्रलंबित खात्यावर जोडले व टेबल मोकळे केले!' : 'Udhar order saved & table freed!')
       : (lang === 'mr' ? 'पेमेंट जमा झाले व टेबल मोकळे केले!' : 'Payment settled and table freed!');
     playNotificationSound(soundMsg);
+  };
+
+  const settleUdharPayment = async (orderId, clearedPaymentMethod) => {
+    const order = orders.find((o) => o.id === orderId);
+    const settledAt = new Date().toISOString();
+
+    setOrders((prev) =>
+      prev.map((ord) =>
+        ord.id === orderId
+          ? {
+              ...ord,
+              status: 'completed',
+              paymentMethod: clearedPaymentMethod || 'Cash',
+              clearedPaymentMethod: clearedPaymentMethod || 'Cash',
+              udharStatus: 'cleared',
+              settledAt
+            }
+          : ord
+      )
+    );
+
+    if (!order) return;
+
+    await Promise.all([
+      postJson(`/api/orders/${orderId}`, {
+        status: 'completed',
+        paymentMethod: clearedPaymentMethod || 'Cash',
+        udharStatus: 'cleared',
+        customerName: order.customerName || '',
+        customerPhone: order.customerPhone || '',
+        settledAt
+      }, 'PUT'),
+      postJson('/api/udhar-ledger', {
+        id: `udhar-${orderId}`,
+        orderId,
+        customerName: order.customerName || '',
+        customerPhone: order.customerPhone || '',
+        amount: order.grandTotal || 0,
+        paymentMethod: clearedPaymentMethod || 'Cash',
+        settledAt
+      })
+    ]).catch(() => {});
+  };
+
+  const saveEodReport = async (reportData) => {
+    const dateKey = new Date().toISOString().split('T')[0];
+    const closedAt = new Date().toISOString();
+    const newReport = {
+      id: `eod-${dateKey}`,
+      dateKey,
+      totalRevenue: Number(reportData.totalRevenue || 0),
+      totalOrders: Number(reportData.totalOrders || 0),
+      cashTotal: Number(reportData.cashTotal || 0),
+      upiTotal: Number(reportData.upiTotal || 0),
+      udharTotal: Number(reportData.udharTotal || 0),
+      vegCount: Number(reportData.vegCount || 0),
+      nonVegCount: Number(reportData.nonVegCount || 0),
+      closedAt
+    };
+
+    setEodReports((prev) => {
+      const filtered = prev.filter((r) => r.id !== newReport.id);
+      const updated = [newReport, ...filtered];
+      localStorage.setItem('aaradhya_eod_reports_db', JSON.stringify(updated));
+      return updated;
+    });
+
+    const res = await postJson('/api/eod-reports', newReport);
+    return res || { success: true };
   };
 
   // Add items to an existing running order (Owner Table Section)
@@ -712,11 +829,7 @@ export const AppProvider = ({ children }) => {
     );
     setTimeout(() => {
       if (!updatedOrder) return;
-      fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedOrder)
-      }).catch(() => {});
+      postJson(`/api/orders/${orderId}`, updatedOrder, 'PUT').catch(() => {});
     }, 0);
     playNotificationSound(lang === 'mr' ? 'बिलामध्ये नवीन पदार्थ जोडले आहेत' : 'Added items to bill');
   };
@@ -804,6 +917,9 @@ export const AppProvider = ({ children }) => {
         updateOrderStatus,
         cancelOrder,
         updatePaymentMethod,
+        settleUdharPayment,
+        eodReports,
+        saveEodReport,
         addItemsToExistingOrder,
         activeOrderId,
         setActiveOrderId,
@@ -822,6 +938,7 @@ export const AppProvider = ({ children }) => {
         addCustomTable,
         removeCustomTable,
         playNotificationSound,
+        safeFetchJson,
         t
       }}
     >

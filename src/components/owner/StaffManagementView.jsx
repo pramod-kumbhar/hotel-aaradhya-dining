@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Users, UserPlus, Calendar, IndianRupee, CheckCircle, XCircle, Clock, Search, Plus, Trash2, Edit, Printer, ShieldCheck, Banknote, Lock, Unlock, BarChart2, CheckCircle2, Download, Eye, AlertCircle, FileSpreadsheet, MessageSquare } from 'lucide-react';
+import { Users, UserPlus, Calendar, IndianRupee, CheckCircle, XCircle, Clock, Search, Plus, Trash2, Edit, Printer, ShieldCheck, Banknote, Lock, Unlock, BarChart2, CheckCircle2, Download, Eye, AlertCircle, FileSpreadsheet, MessageSquare, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const StaffManagementView = () => {
@@ -79,6 +79,40 @@ export const StaffManagementView = () => {
 
   // Check if selected date is submitted & locked
   const isDateSubmitted = !!submittedAttendanceDates?.[selectedDate];
+
+  // Daily Attendance Statistics calculation
+  const getDailyAttendanceStats = () => {
+    if (!staffMembers || staffMembers.length === 0) {
+      return { presentCount: 0, halfDayCount: 0, absentCount: 0, unmarkedCount: 0, attendanceRate: 0 };
+    }
+    let presentCount = 0;
+    let halfDayCount = 0;
+    let absentCount = 0;
+    let unmarkedCount = 0;
+
+    staffMembers.forEach((staff) => {
+      const key = `${selectedDate}_${staff.id}`;
+      const status = attendanceRecords?.[key];
+      if (status === 'P') presentCount++;
+      else if (status === 'HD') halfDayCount++;
+      else if (status === 'A') absentCount++;
+      else unmarkedCount++;
+    });
+
+    const markedTotal = presentCount + halfDayCount + absentCount;
+    const totalEffective = presentCount + halfDayCount * 0.5;
+    const attendanceRate = markedTotal > 0 ? Math.round((totalEffective / staffMembers.length) * 100) : 0;
+
+    return { presentCount, halfDayCount, absentCount, unmarkedCount, attendanceRate };
+  };
+
+  const dailyStats = getDailyAttendanceStats();
+
+  const markAllPresent = () => {
+    (staffMembers || []).forEach((staff) => {
+      markAttendance(selectedDate, staff.id, 'P');
+    });
+  };
 
   // Filtered Staff Members
   const filteredStaff = (staffMembers || []).filter(s =>
@@ -260,84 +294,118 @@ export const StaffManagementView = () => {
 
       {/* --- SUB TAB 1: ATTENDANCE REGISTER --- */}
       {activeSubTab === 'attendance' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           
-          {/* View Mode & Date Selection Bar */}
-          <div className="flex flex-col space-y-3 bg-stone-900 p-3.5 rounded-2xl border border-stone-800 shadow-lg">
-            
+          {/* 1. Live Attendance KPI Stats Banner */}
+          {/* 1. Live Attendance KPI Stats Banner (Compact Horizontal Strip) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-emerald-500/30 flex items-center justify-between shadow-sm">
+              <span className="text-[10px] font-bold text-stone-400">हजर (Present)</span>
+              <span className="text-xs font-black text-emerald-400">🟢 {dailyStats.presentCount}/{staffMembers?.length || 0}</span>
+            </div>
+
+            <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-amber-500/30 flex items-center justify-between shadow-sm">
+              <span className="text-[10px] font-bold text-stone-400">अर्धा दिवस (Half Day)</span>
+              <span className="text-xs font-black text-amber-400">🟡 {dailyStats.halfDayCount}</span>
+            </div>
+
+            <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-red-500/30 flex items-center justify-between shadow-sm">
+              <span className="text-[10px] font-bold text-stone-400">गैरहजर (Absent)</span>
+              <span className="text-xs font-black text-red-400">🔴 {dailyStats.absentCount}</span>
+            </div>
+
+            <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-amber-600/30 flex items-center justify-between shadow-sm">
+              <span className="text-[10px] font-bold text-stone-400">प्रमाण</span>
+              <span className="text-xs font-black text-amber-300">⭐ {dailyStats.attendanceRate}%</span>
+            </div>
+          </div>
+
+          {/* 2. Control Header (Single Compact Card) */}
+          <div className="bg-stone-900 p-2 rounded-xl border border-stone-800 space-y-2 shadow-sm w-full max-w-full overflow-hidden">
             {/* View Mode Pills (Daily, Weekly, Monthly) */}
-            <div className="flex bg-stone-950 p-1 rounded-xl border border-stone-800 overflow-x-auto no-scrollbar gap-1 w-full">
+            <div className="grid grid-cols-3 bg-stone-955 p-0.5 rounded-lg border border-stone-800 gap-1 w-full">
               <button
                 type="button"
                 onClick={() => setAttendanceViewMode('daily')}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 text-center ${
-                  attendanceViewMode === 'daily' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
+                className={`py-1 rounded-md text-[11px] font-bold transition text-center ${
+                  attendanceViewMode === 'daily' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                दैनिक
+                दैनिक (Daily)
               </button>
               <button
                 type="button"
                 onClick={() => setAttendanceViewMode('weekly')}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 text-center ${
-                  attendanceViewMode === 'weekly' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
+                className={`py-1 rounded-md text-[11px] font-bold transition text-center ${
+                  attendanceViewMode === 'weekly' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                आठवडा
+                आठवडा (Weekly)
               </button>
               <button
                 type="button"
                 onClick={() => setAttendanceViewMode('monthly')}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 text-center ${
-                  attendanceViewMode === 'monthly' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
+                className={`py-1 rounded-md text-[11px] font-bold transition text-center ${
+                  attendanceViewMode === 'monthly' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                महिना
+                महिना (Monthly)
               </button>
             </div>
 
-            {/* Date Selection & Action Buttons Row */}
-            <div className="flex flex-row items-center justify-between gap-2">
-              
+            {/* Date & Action Controls (Single Compact Flex Row) */}
+            <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
               {/* Date Input */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <label className="text-xs font-bold text-amber-400 whitespace-nowrap hidden sm:inline">तारीख:</label>
+              <div className="flex items-center gap-1 shrink-0">
+                <label className="text-[11px] font-bold text-amber-400 whitespace-nowrap">तारीख:</label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-stone-950 border border-stone-700 text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-xs focus:outline-none focus:border-amber-500 min-h-[38px]"
+                  className="bg-stone-950 border border-stone-800 text-amber-300 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:border-amber-500 h-9 shadow-inner [color-scheme:dark] transition"
                 />
               </div>
 
-              {/* Action Buttons Group */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                
-                {/* ICON ONLY DOWNLOAD BUTTON */}
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1 shrink-0">
+                {attendanceViewMode === 'daily' && !isDateSubmitted && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markAllPresent();
+                      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+                    }}
+                    className="px-2 py-1 h-8 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/50 text-[10px] sm:text-[11px] font-black flex items-center gap-1 transition shadow whitespace-nowrap"
+                    title="सर्व कर्मचाऱ्यांना आज हजर नोंदवा"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>सर्व हजर</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={downloadAttendanceReportCsv}
-                  className="p-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/50 flex items-center justify-center transition min-w-[38px] min-h-[38px] shrink-0"
+                  className="p-1 rounded-lg bg-stone-955 hover:bg-stone-800 text-amber-300 border border-stone-700 flex items-center justify-center transition w-8 h-8 shrink-0"
                   title="हजेरी अहवाल डाऊनलोड करा (CSV)"
                 >
-                  <Download className="w-4 h-4 text-emerald-400" />
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
                 </button>
 
-                {/* Save / Unlock Attendance Controls */}
                 {attendanceViewMode === 'daily' && (
                   <div className="shrink-0">
                     {isDateSubmitted ? (
-                      <div className="flex items-center gap-1.5">
-                        <span className="bg-emerald-950/80 text-emerald-400 px-2.5 py-1.5 min-h-[38px] rounded-xl text-xs font-extrabold border border-emerald-600/50 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>सेव्ह झाले</span>
+                      <div className="flex items-center gap-1">
+                        <span className="bg-emerald-950/80 text-emerald-400 px-2 py-1 h-8 rounded-lg text-[10px] font-extrabold border border-emerald-600/50 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>सेव्ह</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => unlockDailyAttendance(selectedDate)}
-                          className="px-2.5 py-1.5 min-h-[38px] rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-bold border border-amber-600/40 flex items-center gap-1 transition"
+                          className="px-2 py-1 h-8 rounded-lg bg-stone-800 text-amber-300 text-[10px] font-bold border border-amber-600/40 flex items-center gap-1 transition"
                         >
-                          <Unlock className="w-3.5 h-3.5" />
+                          <Unlock className="w-3 h-3" />
                           <span>बदला</span>
                         </button>
                       </div>
@@ -348,25 +416,25 @@ export const StaffManagementView = () => {
                           submitDailyAttendance(selectedDate);
                           confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
                         }}
-                        className="px-3 py-1.5 min-h-[38px] rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/40 transition whitespace-nowrap"
+                        className="px-2.5 py-1 h-8 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition whitespace-nowrap"
                       >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>हजेरी सेव्ह करा</span>
+                        <Lock className="w-3 h-3" />
+                        <span>हजेरी लॉक करा</span>
                       </button>
                     )}
                   </div>
                 )}
               </div>
             </div>
-
           </div>
 
           {/* VIEW 1: DAILY ATTENDANCE REGISTER */}
           {attendanceViewMode === 'daily' && (
             <div className="bg-stone-900 rounded-2xl border border-stone-800 overflow-hidden shadow-xl">
-              <div className="p-3 bg-stone-950 border-b border-stone-800 flex items-center justify-between text-xs">
-                <span className="font-bold text-amber-300">
-                  हजेरी नोंदवही: <strong className="text-stone-100">{selectedDate}</strong>
+              <div className="p-3.5 bg-stone-955 border-b border-stone-800 flex items-center justify-between text-xs">
+                <span className="font-extrabold text-amber-300 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  <span>हजेरी नोंदवही: <strong className="text-stone-100">{selectedDate}</strong></span>
                 </span>
                 {isDateSubmitted && (
                   <span className="text-[11px] font-bold text-emerald-400">
@@ -403,41 +471,46 @@ export const StaffManagementView = () => {
                   {/* DESKTOP TABLE VIEW (md+) */}
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-stone-950 text-amber-400 uppercase tracking-wider font-extrabold border-b border-stone-800">
+                      <thead className="bg-stone-955 text-amber-400 uppercase tracking-wider font-extrabold border-b border-stone-800">
                         <tr>
                           <th className="p-3.5">कर्मचारी नाव</th>
                           <th className="p-3.5">पद (Role)</th>
                           <th className="p-3.5">मोबाईल</th>
-                          <th className="p-3.5">रोजंदारी</th>
+                          <th className="p-3.5">रोजंदारी (Daily Rate)</th>
                           <th className="p-3.5 text-center">हजेरी नोंद ({selectedDate})</th>
                           <th className="p-3.5 text-right">तपशील</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-800">
+                      <tbody className="divide-y divide-stone-800/80">
                         {(filteredStaff || []).map((staff) => {
                           const statusKey = `${selectedDate}_${staff.id}`;
-                          const currentStatus = attendanceRecords?.[statusKey] || 'P';
+                          const currentStatus = attendanceRecords?.[statusKey];
 
                           return (
-                            <tr key={staff.id} className="hover:bg-stone-800/50 transition">
-                              <td className="p-3.5 font-bold text-stone-100">{staff.name}</td>
+                            <tr key={staff.id} className="hover:bg-stone-800/60 transition group">
+                              <td className="p-3.5 font-bold text-stone-100 flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 font-black flex items-center justify-center text-xs shadow shrink-0">
+                                  {staff.name ? staff.name.charAt(0).toUpperCase() : 'S'}
+                                </div>
+                                <span className="text-sm font-extrabold text-stone-100">{staff.name}</span>
+                              </td>
                               <td className="p-3.5">
-                                <span className="bg-stone-800 text-amber-300 font-bold px-2 py-0.5 rounded border border-stone-700">
+                                <span className="bg-stone-950 text-amber-300 font-extrabold px-2.5 py-1 rounded-lg border border-stone-800 text-xs">
                                   {staff.role}
                                 </span>
                               </td>
-                              <td className="p-3.5 text-stone-400 font-mono">{staff.phone}</td>
-                              <td className="p-3.5 font-bold text-emerald-400">₹{staff.dailyRate}/दिवस</td>
+                              <td className="p-3.5 text-stone-300 font-mono font-bold">{staff.phone}</td>
+                              <td className="p-3.5 font-black text-emerald-400 font-mono text-sm">₹{staff.dailyRate}/दिवस</td>
                               <td className="p-3.5">
-                                <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-center gap-2">
                                   {/* Present */}
                                   <button
                                     disabled={isDateSubmitted}
                                     onClick={() => markAttendance(selectedDate, staff.id, 'P')}
-                                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 ${
+                                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'P'
-                                        ? 'bg-emerald-500 text-stone-950 shadow-md scale-105'
-                                        : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                                        ? 'bg-emerald-500 text-stone-950 shadow-md shadow-emerald-950/50 ring-2 ring-emerald-400 scale-105'
+                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
                                     🟢 P (हजर)
@@ -447,10 +520,10 @@ export const StaffManagementView = () => {
                                   <button
                                     disabled={isDateSubmitted}
                                     onClick={() => markAttendance(selectedDate, staff.id, 'HD')}
-                                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 ${
+                                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'HD'
-                                        ? 'bg-amber-500 text-stone-950 shadow-md scale-105'
-                                        : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                                        ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-950/50 ring-2 ring-amber-400 scale-105'
+                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
                                     🟡 HD (अर्धा)
@@ -460,10 +533,10 @@ export const StaffManagementView = () => {
                                   <button
                                     disabled={isDateSubmitted}
                                     onClick={() => markAttendance(selectedDate, staff.id, 'A')}
-                                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 ${
+                                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'A'
-                                        ? 'bg-red-500 text-white shadow-md scale-105'
-                                        : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                                        ? 'bg-red-500 text-white shadow-md shadow-red-950/50 ring-2 ring-red-400 scale-105'
+                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
                                     🔴 A (गैरहजर)
@@ -473,9 +546,9 @@ export const StaffManagementView = () => {
                               <td className="p-3.5 text-right">
                                 <button
                                   onClick={() => setInspectAbsentStaff(staff)}
-                                  className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 text-xs font-bold transition flex items-center gap-1 ml-auto"
+                                  className="px-3 py-1.5 rounded-xl bg-stone-950 hover:bg-stone-800 text-amber-400 text-xs font-bold border border-stone-800 transition flex items-center gap-1.5 ml-auto shadow"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-3.5 h-3.5 text-amber-400" />
                                   <span>गैरहजरी तारखा</span>
                                 </button>
                               </td>
@@ -487,28 +560,33 @@ export const StaffManagementView = () => {
                   </div>
 
                   {/* MOBILE CARDS VIEW (md:hidden) */}
-                  <div className="md:hidden divide-y divide-stone-800">
+                  <div className="md:hidden divide-y divide-stone-800/80">
                     {(filteredStaff || []).map((staff) => {
                       const statusKey = `${selectedDate}_${staff.id}`;
-                      const currentStatus = attendanceRecords?.[statusKey] || 'P';
+                      const currentStatus = attendanceRecords?.[statusKey];
 
                       return (
-                        <div key={staff.id} className="p-3.5 space-y-2 bg-stone-900/40">
+                        <div key={staff.id} className="p-4 space-y-3 bg-stone-900/60">
                           <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-extrabold text-stone-100 text-sm">{staff.name}</h4>
-                              <div className="flex items-center gap-2 text-[11px] text-stone-400 mt-0.5">
-                                <span className="bg-stone-950 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-stone-800">{staff.role}</span>
-                                <span className="text-emerald-400 font-bold">₹{staff.dailyRate}/दिवस</span>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 font-black flex items-center justify-center text-sm shadow">
+                                {staff.name ? staff.name.charAt(0).toUpperCase() : 'S'}
+                              </div>
+                              <div>
+                                <h4 className="font-extrabold text-stone-100 text-sm">{staff.name}</h4>
+                                <div className="flex items-center gap-2 text-[11px] text-stone-400 mt-0.5">
+                                  <span className="bg-stone-955 text-amber-300 font-bold px-2 py-0.5 rounded-lg border border-stone-800">{staff.role}</span>
+                                  <span className="text-emerald-400 font-black font-mono">₹{staff.dailyRate}/दिवस</span>
+                                </div>
                               </div>
                             </div>
 
                             <button
                               onClick={() => setInspectAbsentStaff(staff)}
-                              className="p-1.5 rounded-lg bg-stone-800 text-amber-400 text-xs font-bold"
+                              className="p-2 rounded-xl bg-stone-955 text-amber-400 border border-stone-800"
                               title="गैरहजरी तारखा पहा"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-4 h-4 text-amber-400" />
                             </button>
                           </div>
 
@@ -518,10 +596,10 @@ export const StaffManagementView = () => {
                             <button
                               disabled={isDateSubmitted}
                               onClick={() => markAttendance(selectedDate, staff.id, 'P')}
-                              className={`flex-1 py-2 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
+                              className={`flex-1 py-2.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
                                 currentStatus === 'P'
-                                  ? 'bg-emerald-500 text-stone-950 shadow-md'
-                                  : 'bg-stone-950 text-stone-400 border border-stone-800'
+                                  ? 'bg-emerald-500 text-stone-950 shadow-md ring-2 ring-emerald-400'
+                                  : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
                               🟢 P (हजर)
@@ -531,10 +609,10 @@ export const StaffManagementView = () => {
                             <button
                               disabled={isDateSubmitted}
                               onClick={() => markAttendance(selectedDate, staff.id, 'HD')}
-                              className={`flex-1 py-2 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
+                              className={`flex-1 py-2.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
                                 currentStatus === 'HD'
-                                  ? 'bg-amber-500 text-stone-950 shadow-md'
-                                  : 'bg-stone-950 text-stone-400 border border-stone-800'
+                                  ? 'bg-amber-500 text-stone-950 shadow-md ring-2 ring-amber-400'
+                                  : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
                               🟡 HD (अर्धा)
@@ -544,10 +622,10 @@ export const StaffManagementView = () => {
                             <button
                               disabled={isDateSubmitted}
                               onClick={() => markAttendance(selectedDate, staff.id, 'A')}
-                              className={`flex-1 py-2 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
+                              className={`flex-1 py-2.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center justify-center gap-1 ${
                                 currentStatus === 'A'
-                                  ? 'bg-red-500 text-white shadow-md'
-                                  : 'bg-stone-950 text-stone-400 border border-stone-800'
+                                  ? 'bg-red-500 text-white shadow-md ring-2 ring-red-400'
+                                  : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
                               🔴 A (गैरहजर)
@@ -1224,8 +1302,19 @@ export const StaffManagementView = () => {
       {/* --- SALARY RECEIPT / VOUCHER PRINT MODAL --- */}
       {salaryReceiptData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md animate-fade-in">
-          <div className="bg-stone-900 border border-amber-600/40 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="text-center space-y-1">
+          <div className="relative bg-stone-900 border border-amber-600/40 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+
+            {/* Top Right Close Button */}
+            <button
+              type="button"
+              onClick={() => setSalaryReceiptData(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-700 transition border border-stone-700 shadow flex items-center justify-center"
+              title="बंद करा (Exit)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-center space-y-1 pr-6">
               <span className="text-2xl">🚩</span>
               <h3 className="text-lg font-black text-amber-400">पगार पावती (Salary Voucher)</h3>
               <p className="text-xs text-stone-400">हॉटेल आराध्या डायनिंग • महिना: {salaryReceiptData.month}</p>
@@ -1254,33 +1343,45 @@ export const StaffManagementView = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const phone = salaryReceiptData.staff.phone || '';
-                  const cleanPhone = phone.replace(/\D/g, '');
-                  if (!cleanPhone) {
-                    alert(lang === 'mr' ? 'कर्मचाऱ्याचा मोबाईल नंबर उपलब्ध नाही' : 'Employee mobile number not available');
-                    return;
-                  }
-                  const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                  const msg = `🚩 *हॉटेल आराध्या डायनिंग - पगार पावती (Salary Slip)* 🚩%0A%0A*कर्मचारी:* ${encodeURIComponent(salaryReceiptData.staff.name)} (${salaryReceiptData.staff.role})%0A*महिना:* ${salaryReceiptData.month}%0A%0A*हजर दिवस:* ${salaryReceiptData.payroll.totalDaysCount} दिवस%0A*कमावलेला पगार:* ₹${salaryReceiptData.payroll.earnedSalary}%0A*वजा उचल (Advance):* ₹${salaryReceiptData.payroll.advanceTotal}%0A%0A*एकूण जमा पगार: ₹${salaryReceiptData.payroll.netPayable}/-*%0A%0Aधन्यवाद! 🙏`;
-                  window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${msg}`, '_blank');
-                }}
-                className="py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow transition"
-              >
-                <MessageSquare className="w-4 h-4 text-emerald-200" />
-                <span>📱 WhatsApp पावती</span>
-              </button>
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const phone = salaryReceiptData.staff.phone || '';
+                    const cleanPhone = phone.replace(/\D/g, '');
+                    if (!cleanPhone) {
+                      alert(lang === 'mr' ? 'कर्मचाऱ्याचा मोबाईल नंबर उपलब्ध नाही' : 'Employee mobile number not available');
+                      return;
+                    }
+                    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                    const msg = `🚩 *हॉटेल आराध्या डायनिंग - पगार पावती (Salary Slip)* 🚩%0A%0A*कर्मचारी:* ${encodeURIComponent(salaryReceiptData.staff.name)} (${salaryReceiptData.staff.role})%0A*महिना:* ${salaryReceiptData.month}%0A%0A*हजर दिवस:* ${salaryReceiptData.payroll.totalDaysCount} दिवस%0A*कमावलेला पगार:* ₹${salaryReceiptData.payroll.earnedSalary}%0A*वजा उचल (Advance):* ₹${salaryReceiptData.payroll.advanceTotal}%0A%0A*एकूण जमा पगार: ₹${salaryReceiptData.payroll.netPayable}/-*%0A%0Aधन्यवाद! 🙏`;
+                    window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${msg}`, '_blank');
+                  }}
+                  className="py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow transition"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-200" />
+                  <span>📱 WhatsApp पावती</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow transition"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>पावती प्रिंट करा</span>
+                </button>
+              </div>
+
+              {/* Bottom Full-Width Close/Exit Button */}
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow transition"
+                onClick={() => setSalaryReceiptData(null)}
+                className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-700 transition"
               >
-                <Printer className="w-4 h-4" />
-                <span>पावती प्रिंट करा</span>
+                <X className="w-4 h-4 text-stone-400" />
+                <span>बंद करा (Exit)</span>
               </button>
             </div>
           </div>

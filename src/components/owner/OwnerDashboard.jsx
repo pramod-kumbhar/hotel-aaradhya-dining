@@ -45,7 +45,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const allTableNames = allTables || ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Parcel'];
   const tableStatusMap = {};
   allTableNames.forEach((tbl) => {
-    const activeOrd = orders.find((o) => o.tableNo === tbl && o.status !== 'completed');
+    const activeOrd = orders.find((o) => o.tableNo === tbl && o.status !== 'completed' && o.status !== 'cancelled');
     tableStatusMap[tbl] = activeOrd || null;
   });
 
@@ -80,7 +80,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
 
     createOrder({
       tableNo: posTable,
-      customerName: posCustomerName || 'काउंटर ग्राहक',
+      customerName: posCustomerName || '',
       items: posCart,
       specialNotes: posNotes,
       paymentMethod: posPayment,
@@ -585,10 +585,10 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
 
               {/* DEDICATED ADD TABLE OPTION CARD AT THE VERY END OF GRID */}
               <div
-                onClick={() => {
+                onClick={async () => {
                   const defaultNext = `Table ${allTableNames.length} (Custom)`;
-                  const res = addCustomTable(defaultNext);
-                  if (!res.success) alert(res.error);
+                  const res = await addCustomTable(defaultNext);
+                  if (res && !res.success) alert(res.error);
                 }}
                 className="p-5 rounded-2xl border-2 border-dashed border-amber-500/40 bg-amber-950/10 hover:bg-amber-950/20 hover:border-amber-400 transition cursor-pointer flex flex-col items-center justify-center text-center space-y-2.5 min-h-[180px] group shadow-md"
               >

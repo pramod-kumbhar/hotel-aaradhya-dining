@@ -4,7 +4,7 @@ import { CATEGORIES } from '../../data/menuData';
 import { Search, Flame, Leaf, Egg, Drumstick, Utensils, Plus, Check, Info, ShieldAlert, Sparkles } from 'lucide-react';
 
 export const CustomerView = ({ onOpenCart }) => {
-  const { lang, tableNo, setTableNo, menuItems, cart, orders, addToCart, t } = useApp();
+  const { lang, tableNo, setTableNo, menuItems, cart, orders, addToCart, allTables, t } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,8 +16,10 @@ export const CustomerView = ({ onOpenCart }) => {
     orders.filter((o) => o.status !== 'completed').map((o) => o.tableNo)
   );
 
-  // Table options 1-10 + Parcel
-  const tables = ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10', 'Parcel'];
+  // Dynamic table list from backend + local fallback
+  const tables = allTables?.length
+    ? allTables
+    : ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Table 7', 'Table 8', 'Table 9', 'Table 10', 'Parcel'];
 
   // Category Icon helper
   const getCategoryIcon = (catId) => {

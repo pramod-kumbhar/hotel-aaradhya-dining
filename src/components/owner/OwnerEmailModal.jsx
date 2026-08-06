@@ -4,7 +4,7 @@ import { Mail, Plus, Trash2, X, Send } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const OwnerEmailModal = ({ isOpen, onClose }) => {
-  const { ownerEmails, addOwnerEmail, removeOwnerEmail, lang } = useApp();
+  const { ownerEmails, addOwnerEmail, removeOwnerEmail, lang, safeFetchJson } = useApp();
   const [newEmail, setNewEmail] = useState('');
   const [testResult, setTestResult] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
@@ -13,9 +13,12 @@ export const OwnerEmailModal = ({ isOpen, onClose }) => {
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    if (!newEmail || !newEmail.includes('@')) return;
+    if (!newEmail) return;
 
-    addOwnerEmail(newEmail);
+    // Support comma-separated multiple emails
+    const emailsToAdd = newEmail.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+    emailsToAdd.forEach(em => addOwnerEmail(em));
+
     setNewEmail('');
     confetti({ particleCount: 50, spread: 50, origin: { y: 0.6 } });
   };
@@ -25,9 +28,12 @@ export const OwnerEmailModal = ({ isOpen, onClose }) => {
     setTestResult(null);
 
     try {
-      const res = await fetch('/api/verify-smtp');
-      const data = await res.json();
-      setTestResult(data);
+      const data = await safeFetchJson('/api/verify-smtp');
+      if (data) {
+        setTestResult(data);
+      } else {
+        setTestResult({ success: false, message: '❌ SMTP सर्व्हर जोडता आला नाही.' });
+      }
     } catch (e) {
       setTestResult({ success: false, message: '❌ SMTP सर्व्हर जोडता आला नाही.' });
     } finally {

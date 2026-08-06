@@ -56,7 +56,7 @@ export const CartDrawer = ({ isOpen, onClose, onOpenTracker }) => {
     setTimeout(() => {
       const newOrder = createOrder({
         tableNo,
-        customerName: customerName || (lang === 'mr' ? 'ग्राहक' : 'Customer'),
+        customerName: customerName || '',
         customerPhone: '',
         items: cart,
         specialNotes,

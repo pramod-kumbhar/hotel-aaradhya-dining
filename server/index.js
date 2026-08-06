@@ -8,8 +8,35 @@ import { getDb, initDb, executeWithRetry } from './db.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '10mb' }));
+
+// Lazy DB initialization middleware for Vercel Serverless Functions
+let isDbInitStarted = false;
+app.use(async (req, res, next) => {
+  if (!isDbInitStarted) {
+    isDbInitStarted = true;
+    initDb().catch((err) => {
+      console.error('Lazy DB Init Error:', err.message);
+    });
+  }
+  next();
+});
+
+// Root API Health & Status Check Route
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    status: 'online',
+    service: 'Hotel Aaradhya Dining API',
+    timestamp: new Date().toISOString(),
+    environment: process.env.VERCEL === '1' ? 'Vercel Serverless' : 'Node.js Local Server'
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 
@@ -141,9 +168,32 @@ app.put('/api/orders/:id', async (req, res) => {
       sql: 'SELECT * FROM orders WHERE id = ?',
       args: [id]
     });
+
     if (!existing.rows.length) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      // Order not in DB yet - insert with new status
+      await executeWithRetry({
+        sql: `INSERT INTO orders (id, table_no, customer_name, customer_phone, timestamp, status, items, special_notes, payment_method, item_total, extra_thali_total, grand_total, udhar_status, settled_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          id,
+          req.body.tableNo || 'Table 1',
+          customerName || '',
+          customerPhone || '',
+          req.body.timestamp || new Date().toISOString(),
+          status || 'cancelled',
+          JSON.stringify(items || []),
+          specialNotes || '',
+          paymentMethod || 'Cash',
+          itemTotal || 0,
+          extraThaliTotal || 0,
+          grandTotal || 0,
+          udharStatus || 'none',
+          settledAt || null
+        ]
+      });
+      return res.json({ success: true, message: 'Order inserted with updated status!' });
     }
+
     const current = existing.rows[0];
     await executeWithRetry({
       sql: `UPDATE orders SET
@@ -160,21 +210,21 @@ app.put('/api/orders/:id', async (req, res) => {
               settled_at = ?
             WHERE id = ?`,
       args: [
-        status || current.status,
+        status !== undefined ? status : current.status,
         paymentMethod || current.payment_method || 'Cash',
-        customerName ?? current.customer_name ?? '',
-        customerPhone ?? current.customer_phone ?? '',
-        JSON.stringify(items ?? safeJsonParse(current.items, [])),
-        specialNotes ?? current.special_notes ?? '',
-        itemTotal ?? current.item_total ?? 0,
-        extraThaliTotal ?? current.extra_thali_total ?? 0,
-        grandTotal ?? current.grand_total ?? 0,
-        udharStatus ?? current.udhar_status ?? 'none',
-        settledAt ?? current.settled_at ?? null,
+        customerName !== undefined ? customerName : (current.customer_name || ''),
+        customerPhone !== undefined ? customerPhone : (current.customer_phone || ''),
+        JSON.stringify(items !== undefined ? items : safeJsonParse(current.items, [])),
+        specialNotes !== undefined ? specialNotes : (current.special_notes ?? ''),
+        itemTotal !== undefined ? itemTotal : (current.item_total ?? 0),
+        extraThaliTotal !== undefined ? extraThaliTotal : (current.extra_thali_total ?? 0),
+        grandTotal !== undefined ? grandTotal : (current.grand_total ?? 0),
+        udharStatus !== undefined ? udharStatus : (current.udhar_status ?? 'none'),
+        settledAt !== undefined ? settledAt : (current.settled_at ?? null),
         id
       ]
     });
-    res.json({ success: true, message: 'Order updated in Turso DB!' });
+    res.json({ success: true, message: 'Order updated in DB!' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -482,6 +532,143 @@ app.delete('/api/custom-tables/:tableName', async (req, res) => {
   }
 });
 
+// 12. Menu Categories
+app.get('/api/categories', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM categories ORDER BY id');
+    const categories = result.rows.map((row) => ({
+      id: row.id,
+      nameMr: row.name_mr,
+      nameEn: row.name_en,
+      icon: row.icon,
+      color: row.color
+    }));
+    res.json({ success: true, categories });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13. Hotel Rules
+app.get('/api/hotel-rules', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM hotel_rules ORDER BY id');
+    const rules = result.rows.map((row) => ({
+      id: row.id,
+      mr: row.mr,
+      en: row.en
+    }));
+    res.json({ success: true, rules });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 14. Udhar Settlement Ledger
+app.get('/api/udhar-ledger', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM udhar_ledger ORDER BY settled_at DESC');
+    const ledger = result.rows.map((row) => ({
+      id: row.id,
+      orderId: row.order_id,
+      customerName: row.customer_name,
+      customerPhone: row.customer_phone,
+      amount: Number(row.amount),
+      paymentMethod: row.payment_method,
+      settledAt: row.settled_at
+    }));
+    res.json({ success: true, ledger });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/udhar-ledger', async (req, res) => {
+  const { id, orderId, customerName, customerPhone, amount, paymentMethod, settledAt } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO udhar_ledger (id, order_id, customer_name, customer_phone, amount, payment_method, settled_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              order_id = excluded.order_id,
+              customer_name = excluded.customer_name,
+              customer_phone = excluded.customer_phone,
+              amount = excluded.amount,
+              payment_method = excluded.payment_method,
+              settled_at = excluded.settled_at`,
+      args: [
+        id || `${orderId}_${settledAt || Date.now()}`,
+        orderId,
+        customerName || '',
+        customerPhone || '',
+        Number(amount || 0),
+        paymentMethod || 'Cash',
+        settledAt || new Date().toISOString()
+      ]
+    });
+    res.json({ success: true, message: 'Udhar ledger saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 15. End-of-Day Reports
+app.get('/api/eod-reports', async (req, res) => {
+  try {
+    const result = await executeWithRetry('SELECT * FROM eod_reports ORDER BY closed_at DESC');
+    const reports = result.rows.map((row) => ({
+      id: row.id,
+      dateKey: row.date_key,
+      totalRevenue: Number(row.total_revenue),
+      totalOrders: Number(row.total_orders),
+      cashTotal: Number(row.cash_total),
+      upiTotal: Number(row.upi_total),
+      udharTotal: Number(row.udhar_total),
+      vegCount: Number(row.veg_count || 0),
+      nonVegCount: Number(row.non_veg_count || 0),
+      closedAt: row.closed_at
+    }));
+    res.json({ success: true, reports });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/eod-reports', async (req, res) => {
+  const { id, dateKey, totalRevenue, totalOrders, cashTotal, upiTotal, udharTotal, vegCount, nonVegCount, closedAt } = req.body;
+  try {
+    await executeWithRetry({
+      sql: `INSERT INTO eod_reports (id, date_key, total_revenue, total_orders, cash_total, upi_total, udhar_total, veg_count, non_veg_count, closed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              date_key = excluded.date_key,
+              total_revenue = excluded.total_revenue,
+              total_orders = excluded.total_orders,
+              cash_total = excluded.cash_total,
+              upi_total = excluded.upi_total,
+              udhar_total = excluded.udhar_total,
+              veg_count = excluded.veg_count,
+              non_veg_count = excluded.non_veg_count,
+              closed_at = excluded.closed_at`,
+      args: [
+        id || `eod-${dateKey || new Date().toISOString().split('T')[0]}`,
+        dateKey || new Date().toISOString().split('T')[0],
+        Number(totalRevenue || 0),
+        Number(totalOrders || 0),
+        Number(cashTotal || 0),
+        Number(upiTotal || 0),
+        Number(udharTotal || 0),
+        Number(vegCount || 0),
+        Number(nonVegCount || 0),
+        closedAt || new Date().toISOString()
+      ]
+    });
+    res.json({ success: true, message: 'EOD report saved!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 import fs from 'fs';
 
 // Save & Update SMTP Credentials Endpoint (Directly from UI)
@@ -618,6 +805,14 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
+// 404 Fallback JSON Handler for API routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ success: false, error: `API route '${req.originalUrl}' not found.` });
+  }
+  next();
+});
+
 const startServer = async () => {
   await initDb();
   app.listen(PORT, () => {
@@ -626,6 +821,16 @@ const startServer = async () => {
     console.log(`📧 SMTP Verification URL: http://localhost:${PORT}/api/verify-smtp`);
     console.log(`=================================================`);
   });
+  // Keep Node.js process alive indefinitely
+  setInterval(() => {}, 1000 * 60 * 60);
 };
 
-startServer();
+if (process.env.VERCEL === '1') {
+  initDb().catch((error) => {
+    console.error('Database initialization failed on Vercel:', error.message);
+  });
+} else {
+  startServer();
+}
+
+export default app;
