@@ -70,7 +70,7 @@ export const MenuManager = () => {
           className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-bold text-xs flex items-center gap-1.5 hover:scale-105 transition shadow-md"
         >
           <Plus className="w-4 h-4" />
-          <span>+ नवीन पदार्थ जोडा</span>
+          <span>{lang === 'mr' ? '+ नवीन पदार्थ जोडा' : '+ Add New Item'}</span>
         </button>
       </div>
 

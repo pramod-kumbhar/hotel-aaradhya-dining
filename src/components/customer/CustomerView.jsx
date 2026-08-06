@@ -56,7 +56,11 @@ export const CustomerView = ({ onOpenCart }) => {
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>१. मेनूमधून पदार्थ निवडा ➔ २. चेकआऊट वेळी मोकळे टेबल निवडा</span>
+              <span>
+                {lang === 'mr'
+                  ? '१. मेनूमधून पदार्थ निवडा ➔ २. चेकआऊट वेळी मोकळे टेबल निवडा'
+                  : '1. Select dishes ➔ 2. Choose available table at checkout'}
+              </span>
             </span>
           </div>
 
@@ -79,15 +83,19 @@ export const CustomerView = ({ onOpenCart }) => {
                   isSelected
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 border-amber-400 shadow-md scale-105 font-black'
                     : isOccupied
-                    ? 'bg-stone-950/40 text-stone-600 border-stone-800/40 cursor-not-allowed'
+                    ? 'bg-stone-955/40 text-stone-600 border-stone-800/40 cursor-not-allowed'
                     : 'bg-stone-800/60 text-stone-300 border-stone-700/60 hover:bg-stone-800'
                 }`}
               >
                 <span>{tbl === 'Parcel' ? (lang === 'mr' ? '🛍️ पार्सल' : '🛍️ Parcel') : tbl}</span>
                 <span className={`text-[9px] px-1 rounded font-black ${
-                  isOccupied ? 'bg-red-950 text-red-400 border border-red-800' : isSelected ? 'bg-stone-950 text-amber-300' : 'bg-emerald-950 text-emerald-300'
+                  isOccupied ? 'bg-red-955 text-red-400 border border-red-800' : isSelected ? 'bg-stone-955 text-amber-300' : 'bg-emerald-955 text-emerald-300'
                 }`}>
-                  {isOccupied ? 'व्यस्त' : isSelected ? 'निवडले' : 'मोकळे'}
+                  {isOccupied
+                    ? (lang === 'mr' ? 'व्यस्त' : 'Occupied')
+                    : isSelected
+                    ? (lang === 'mr' ? 'निवडले' : 'Selected')
+                    : (lang === 'mr' ? 'मोकळे' : 'Free')}
                 </span>
               </button>
             );

@@ -125,37 +125,43 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
             <Lock className="w-5 h-5 text-amber-400" />
           </div>
           <h3 className="text-base font-black text-amber-400">
-            आजचा व्यवहार बंद करा व ई-मेल पाठवा
+            {lang === 'mr' ? 'आजचा व्यवहार बंद करा व ई-मेल पाठवा' : 'Close Day Sales & Send Email'}
           </h3>
           <p className="text-[11px] text-stone-400">
-            हॉटेल बंद करताना मालकांना दैनंदिन विक्री व महसूल अहवाल ई-मेल करा ({reportData.date})
+            {lang === 'mr'
+              ? `हॉटेल बंद करताना मालकांना दैनंदिन विक्री व महसूल अहवाल ई-मेल करा (${reportData.date})`
+              : `Email daily sales and revenue report to owners (${reportData.date})`}
           </p>
         </div>
 
         {/* Sales Summary Card Preview */}
-        <div className="bg-stone-950 p-3.5 rounded-2xl border border-stone-800 space-y-2.5">
+        <div className="bg-stone-955 p-3.5 rounded-2xl border border-stone-800 space-y-2.5">
           <div className="flex items-center justify-between border-b border-stone-800 pb-2">
-            <span className="text-xs font-bold text-stone-400">एकूण दैनिक महसूल</span>
+            <span className="text-xs font-bold text-stone-400">{lang === 'mr' ? 'एकूण दैनिक महसूल' : 'Total Daily Revenue'}</span>
             <span className="text-lg sm:text-xl font-black text-amber-400">₹{totalRevenue}/-</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
-              <span className="text-stone-400 block text-[10px]">पूर्ण ऑर्डर्स</span>
-              <span className="font-extrabold text-stone-200">{totalOrders} ऑर्डर्स</span>
+              <span className="text-stone-400 block text-[10px]">{lang === 'mr' ? 'पूर्ण ऑर्डर्स' : 'Completed Orders'}</span>
+              <span className="font-extrabold text-stone-200">
+                {lang === 'mr' ? `${totalOrders} ऑर्डर्स` : `${totalOrders} Orders`}
+              </span>
             </div>
             <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
-              <span className="text-stone-400 block text-[10px]">जेवण विक्री</span>
+              <span className="text-stone-400 block text-[10px]">{lang === 'mr' ? 'जेवण विक्री' : 'Meals Sold'}</span>
               <span className="font-extrabold text-emerald-400">🥗 {vegCount}</span> • <span className="font-extrabold text-red-400">🍗 {nonVegCount}</span>
             </div>
           </div>
 
           {/* Payment Breakup */}
           <div className="space-y-1 pt-0.5">
-            <span className="text-[10px] font-bold text-stone-400 block uppercase">पेमेंट पद्धतीनुसार वर्गिकरण:</span>
+            <span className="text-[10px] font-bold text-stone-400 block uppercase">
+              {lang === 'mr' ? 'पेमेंट पद्धतीनुसार वर्गिकरण:' : 'Payment Method Breakdown:'}
+            </span>
             <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
               <div className="bg-emerald-950/40 border border-emerald-700/40 p-1.5 rounded-xl">
-                <span className="text-[10px] text-emerald-400 block font-bold">💵 Cash</span>
+                <span className="text-[10px] text-emerald-400 block font-bold">💵 {lang === 'mr' ? 'रोख' : 'Cash'}</span>
                 <span className="font-black text-emerald-300">₹{cashTotal}</span>
               </div>
               <div className="bg-amber-950/40 border border-amber-700/40 p-1.5 rounded-xl">
@@ -163,7 +169,7 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
                 <span className="font-black text-amber-300">₹{upiTotal}</span>
               </div>
               <div className="bg-red-950/40 border border-red-700/40 p-1.5 rounded-xl">
-                <span className="text-[10px] text-red-400 block font-bold">📝 उधार</span>
+                <span className="text-[10px] text-red-400 block font-bold">📝 {lang === 'mr' ? 'उधार' : 'Udhar'}</span>
                 <span className="font-black text-red-300">₹{udharTotal}</span>
               </div>
             </div>
@@ -175,7 +181,11 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-amber-400" />
-              <span>ई-मेल प्राप्तकर्ते मालक ({ownerEmails?.length || 0}) *</span>
+              <span>
+                {lang === 'mr'
+                  ? `ई-मेल प्राप्तकर्ते मालक (${ownerEmails?.length || 0})`
+                  : `Owner Email Recipients (${ownerEmails?.length || 0})`}
+              </span>
             </label>
           </div>
 

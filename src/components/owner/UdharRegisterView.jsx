@@ -109,7 +109,7 @@ export const UdharRegisterView = () => {
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-amber-400">
-                {lang === 'mr' ? 'उधार खाते नोंदणी पुस्तक (Credit Ledger)' : 'Customer Udhar Register'}
+                {lang === 'mr' ? 'उधार खाते नोंदणी पुस्तक' : 'Udhar Credit Ledger'}
               </h2>
               <p className="text-[11px] text-stone-400">
                 {lang === 'mr' ? 'उधारी बिलांचा हिशोब व तत्काळ जमा वसुली' : 'Manage customer credit balances & instant recovery'}
@@ -120,12 +120,16 @@ export const UdharRegisterView = () => {
           {/* Quick Summary Metrics & CSV Download */}
           <div className="flex items-center gap-2">
             <div className="bg-stone-950/80 border border-red-500/40 rounded-xl px-3 py-1.5 text-center shrink-0">
-              <span className="text-[10px] text-stone-400 uppercase font-bold block">प्रलंबित उधारी</span>
+              <span className="text-[10px] text-stone-400 uppercase font-bold block">
+                {lang === 'mr' ? 'प्रलंबित उधारी' : 'Pending Credit'}
+              </span>
               <span className="text-sm sm:text-base font-black text-red-400">₹{totalUdharPending}</span>
             </div>
 
             <div className="bg-stone-950/80 border border-emerald-500/40 rounded-xl px-3 py-1.5 text-center shrink-0">
-              <span className="text-[10px] text-stone-400 uppercase font-bold block">वसूल उधारी</span>
+              <span className="text-[10px] text-stone-400 uppercase font-bold block">
+                {lang === 'mr' ? 'वसूल उधारी' : 'Recovered Credit'}
+              </span>
               <span className="text-sm sm:text-base font-black text-emerald-400">₹{totalUdharCleared}</span>
             </div>
 
@@ -133,7 +137,7 @@ export const UdharRegisterView = () => {
               type="button"
               onClick={downloadUdharCsv}
               className="p-2 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/50 flex items-center justify-center transition min-w-[38px] min-h-[38px] shrink-0"
-              title="उधार खाते रिपोर्ट डाऊनलोड करा (CSV)"
+              title={lang === 'mr' ? 'उधार खाते अहवाल डाऊनलोड करा' : 'Download Udhar CSV'}
             >
               <Download className="w-4 h-4 text-emerald-400" />
             </button>
@@ -152,7 +156,7 @@ export const UdharRegisterView = () => {
                 statusFilter === 'pending' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              📝 प्रलंबित ({pendingCount})
+              {lang === 'mr' ? `📝 प्रलंबित (${pendingCount})` : `📝 Pending (${pendingCount})`}
             </button>
             <button
               type="button"
@@ -161,7 +165,7 @@ export const UdharRegisterView = () => {
                 statusFilter === 'cleared' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              ✅ जमा झालेले ({clearedCount})
+              {lang === 'mr' ? `✅ जमा झालेले (${clearedCount})` : `✅ Cleared (${clearedCount})`}
             </button>
             <button
               type="button"
@@ -170,7 +174,7 @@ export const UdharRegisterView = () => {
                 statusFilter === 'all' ? 'bg-amber-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              सर्व ({udharOrders.length})
+              {lang === 'mr' ? `सर्व (${udharOrders.length})` : `All (${udharOrders.length})`}
             </button>
           </div>
 

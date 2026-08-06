@@ -246,7 +246,7 @@ export const StaffManagementView = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-stone-900/90 p-3.5 rounded-2xl border border-amber-600/30 shadow-xl">
         <h2 className="text-base font-black text-amber-300 flex items-center gap-2">
           <Users className="w-5 h-5 text-amber-400" />
-          <span>कर्मचारी व हजेरी</span>
+          <span>{lang === 'mr' ? 'कर्मचारी व हजेरी' : 'Staff & Attendance'}</span>
         </h2>
 
         {/* Sub Tab Navigation */}
@@ -261,7 +261,7 @@ export const StaffManagementView = () => {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>हजेरी</span>
+            <span>{lang === 'mr' ? 'हजेरी' : 'Attendance'}</span>
           </button>
 
           <button
@@ -274,7 +274,7 @@ export const StaffManagementView = () => {
             }`}
           >
             <IndianRupee className="w-3.5 h-3.5" />
-            <span>पगार</span>
+            <span>{lang === 'mr' ? 'पगार' : 'Payroll'}</span>
           </button>
 
           <button
@@ -287,7 +287,7 @@ export const StaffManagementView = () => {
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>कर्मचारी ({staffMembers?.length || 0})</span>
+            <span>{lang === 'mr' ? `कर्मचारी (${staffMembers?.length || 0})` : `Staff (${staffMembers?.length || 0})`}</span>
           </button>
         </div>
       </div>
@@ -300,22 +300,22 @@ export const StaffManagementView = () => {
           {/* 1. Live Attendance KPI Stats Banner (Compact Horizontal Strip) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-emerald-500/30 flex items-center justify-between shadow-sm">
-              <span className="text-[10px] font-bold text-stone-400">हजर (Present)</span>
+              <span className="text-[10px] font-bold text-stone-400">{lang === 'mr' ? 'हजर' : 'Present'}</span>
               <span className="text-xs font-black text-emerald-400">🟢 {dailyStats.presentCount}/{staffMembers?.length || 0}</span>
             </div>
 
             <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-amber-500/30 flex items-center justify-between shadow-sm">
-              <span className="text-[10px] font-bold text-stone-400">अर्धा दिवस (Half Day)</span>
+              <span className="text-[10px] font-bold text-stone-400">{lang === 'mr' ? 'अर्धा दिवस' : 'Half Day'}</span>
               <span className="text-xs font-black text-amber-400">🟡 {dailyStats.halfDayCount}</span>
             </div>
 
             <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-red-500/30 flex items-center justify-between shadow-sm">
-              <span className="text-[10px] font-bold text-stone-400">गैरहजर (Absent)</span>
+              <span className="text-[10px] font-bold text-stone-400">{lang === 'mr' ? 'गैरहजर' : 'Absent'}</span>
               <span className="text-xs font-black text-red-400">🔴 {dailyStats.absentCount}</span>
             </div>
 
             <div className="bg-stone-900/90 px-2.5 py-1.5 rounded-xl border border-amber-600/30 flex items-center justify-between shadow-sm">
-              <span className="text-[10px] font-bold text-stone-400">प्रमाण</span>
+              <span className="text-[10px] font-bold text-stone-400">{lang === 'mr' ? 'प्रमाण' : 'Rate'}</span>
               <span className="text-xs font-black text-amber-300">⭐ {dailyStats.attendanceRate}%</span>
             </div>
           </div>
@@ -331,7 +331,7 @@ export const StaffManagementView = () => {
                   attendanceViewMode === 'daily' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                दैनिक (Daily)
+                {lang === 'mr' ? 'दैनिक' : 'Daily'}
               </button>
               <button
                 type="button"
@@ -340,7 +340,7 @@ export const StaffManagementView = () => {
                   attendanceViewMode === 'weekly' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                आठवडा (Weekly)
+                {lang === 'mr' ? 'आठवडा' : 'Weekly'}
               </button>
               <button
                 type="button"
@@ -349,7 +349,7 @@ export const StaffManagementView = () => {
                   attendanceViewMode === 'monthly' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black shadow' : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
-                महिना (Monthly)
+                {lang === 'mr' ? 'महिना' : 'Monthly'}
               </button>
             </div>
 
@@ -357,7 +357,9 @@ export const StaffManagementView = () => {
             <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
               {/* Date Input */}
               <div className="flex items-center gap-1 shrink-0">
-                <label className="text-[11px] font-bold text-amber-400 whitespace-nowrap">तारीख:</label>
+                <label className="text-[11px] font-bold text-amber-400 whitespace-nowrap">
+                  {lang === 'mr' ? 'तारीख:' : 'Date:'}
+                </label>
                 <input
                   type="date"
                   value={selectedDate}
@@ -374,7 +376,7 @@ export const StaffManagementView = () => {
                       <div className="flex items-center gap-1">
                         <span className="bg-emerald-950/80 text-emerald-400 px-2 py-1 h-8 rounded-lg text-[10px] font-extrabold border border-emerald-600/50 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                          <span>सेव्ह</span>
+                          <span>{lang === 'mr' ? 'सेव्ह' : 'Saved'}</span>
                         </span>
                         <button
                           type="button"
@@ -382,7 +384,7 @@ export const StaffManagementView = () => {
                           className="px-2 py-1 h-8 rounded-lg bg-stone-800 text-amber-300 text-[10px] font-bold border border-amber-600/40 flex items-center gap-1 transition"
                         >
                           <Unlock className="w-3 h-3" />
-                          <span>बदला</span>
+                          <span>{lang === 'mr' ? 'बदला' : 'Edit'}</span>
                         </button>
                       </div>
                     ) : (
@@ -395,7 +397,7 @@ export const StaffManagementView = () => {
                         className="px-2.5 py-1 h-8 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition whitespace-nowrap"
                       >
                         <Lock className="w-3 h-3" />
-                        <span>हजेरी लॉक करा</span>
+                        <span>{lang === 'mr' ? 'हजेरी लॉक करा' : 'Lock Attendance'}</span>
                       </button>
                     )}
                   </div>
@@ -405,7 +407,7 @@ export const StaffManagementView = () => {
                   type="button"
                   onClick={downloadAttendanceReportCsv}
                   className="p-1 rounded-lg bg-stone-955 hover:bg-stone-800 text-amber-300 border border-stone-700 flex items-center justify-center transition w-8 h-8 shrink-0"
-                  title="हजेरी अहवाल डाऊनलोड करा (CSV)"
+                  title={lang === 'mr' ? 'हजेरी अहवाल डाऊनलोड करा' : 'Download Attendance Report'}
                 >
                   <Download className="w-3.5 h-3.5 text-amber-400" />
                 </button>
@@ -419,11 +421,15 @@ export const StaffManagementView = () => {
               <div className="p-3.5 bg-stone-955 border-b border-stone-800 flex items-center justify-between text-xs">
                 <span className="font-extrabold text-amber-300 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-amber-400" />
-                  <span>हजेरी नोंदवही: <strong className="text-stone-100">{selectedDate}</strong></span>
+                  <span>
+                    {lang === 'mr' ? 'हजेरी नोंदवही:' : 'Attendance Register:'} <strong className="text-stone-100">{selectedDate}</strong>
+                  </span>
                 </span>
                 {isDateSubmitted && (
                   <span className="text-[11px] font-bold text-emerald-400">
-                    ही हजेरी सेव्ह झालेली आहे. बदल करण्यासाठी 'बदला' वर क्लिक करा.
+                    {lang === 'mr'
+                      ? "ही हजेरी सेव्ह झालेली आहे. बदल करण्यासाठी 'बदला' वर क्लिक करा."
+                      : "Attendance is saved & locked. Click 'Edit' to make changes."}
                   </span>
                 )}
               </div>
@@ -436,10 +442,12 @@ export const StaffManagementView = () => {
                   </div>
                   <div className="space-y-1 max-w-sm">
                     <h3 className="text-sm font-extrabold text-stone-200">
-                      कोणताही कर्मचारी रेकॉर्ड उपलब्ध नाही
+                      {lang === 'mr' ? 'कोणताही कर्मचारी रेकॉर्ड उपलब्ध नाही' : 'No staff records available'}
                     </h3>
                     <p className="text-xs text-stone-400">
-                      हजेरी नोंदवण्याकरिता प्रथम 'कर्मचारी' टॅबवर जाऊन नवीन कर्मचारी जोडा.
+                      {lang === 'mr'
+                        ? "हजेरी नोंदवण्याकरिता प्रथम 'कर्मचारी' टॅबवर जाऊन नवीन कर्मचारी जोडा."
+                        : "Please add staff members in the 'Staff' directory tab first."}
                     </p>
                   </div>
                   <button
@@ -448,7 +456,7 @@ export const StaffManagementView = () => {
                     className="mt-1 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs flex items-center gap-1.5 transition shadow"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>+ नवीन कर्मचारी जोडा</span>
+                    <span>+ {lang === 'mr' ? 'नवीन कर्मचारी जोडा' : 'Add Staff'}</span>
                   </button>
                 </div>
               ) : (
@@ -458,12 +466,12 @@ export const StaffManagementView = () => {
                     <table className="w-full text-left text-xs">
                       <thead className="bg-stone-955 text-amber-400 uppercase tracking-wider font-extrabold border-b border-stone-800">
                         <tr>
-                          <th className="p-3.5">कर्मचारी नाव</th>
-                          <th className="p-3.5">पद (Role)</th>
-                          <th className="p-3.5">मोबाईल</th>
-                          <th className="p-3.5">रोजंदारी (Daily Rate)</th>
-                          <th className="p-3.5 text-center">हजेरी नोंद ({selectedDate})</th>
-                          <th className="p-3.5 text-right">तपशील</th>
+                          <th className="p-3.5">{lang === 'mr' ? 'कर्मचारी नाव' : 'Employee Name'}</th>
+                          <th className="p-3.5">{lang === 'mr' ? 'पद' : 'Role'}</th>
+                          <th className="p-3.5">{lang === 'mr' ? 'मोबाईल' : 'Mobile'}</th>
+                          <th className="p-3.5">{lang === 'mr' ? 'रोजंदारी' : 'Daily Rate'}</th>
+                          <th className="p-3.5 text-center">{lang === 'mr' ? `हजेरी नोंद (${selectedDate})` : `Attendance (${selectedDate})`}</th>
+                          <th className="p-3.5 text-right">{lang === 'mr' ? 'तपशील' : 'Details'}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-800/80">
@@ -485,7 +493,9 @@ export const StaffManagementView = () => {
                                 </span>
                               </td>
                               <td className="p-3.5 text-stone-300 font-mono font-bold">{staff.phone}</td>
-                              <td className="p-3.5 font-black text-emerald-400 font-mono text-sm">₹{staff.dailyRate}/दिवस</td>
+                              <td className="p-3.5 font-black text-emerald-400 font-mono text-sm">
+                                {lang === 'mr' ? `₹${staff.dailyRate}/दिवस` : `₹${staff.dailyRate}/day`}
+                              </td>
                               <td className="p-3.5">
                                 <div className="flex items-center justify-center gap-2">
                                   {/* Present */}
@@ -495,10 +505,10 @@ export const StaffManagementView = () => {
                                     className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'P'
                                         ? 'bg-emerald-500 text-stone-950 shadow-md shadow-emerald-950/50 ring-2 ring-emerald-400 scale-105'
-                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
+                                        : 'bg-stone-955 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
-                                    🟢 P (हजर)
+                                    🟢 {lang === 'mr' ? 'हजर' : 'Present'}
                                   </button>
 
                                   {/* Half Day */}
@@ -508,10 +518,10 @@ export const StaffManagementView = () => {
                                     className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'HD'
                                         ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-950/50 ring-2 ring-amber-400 scale-105'
-                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
+                                        : 'bg-stone-955 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
-                                    🟡 HD (अर्धा)
+                                    🟡 {lang === 'mr' ? 'अर्धा दिवस' : 'Half Day'}
                                   </button>
 
                                   {/* Absent */}
@@ -521,10 +531,10 @@ export const StaffManagementView = () => {
                                     className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition disabled:opacity-80 flex items-center gap-1 ${
                                       currentStatus === 'A'
                                         ? 'bg-red-500 text-white shadow-md shadow-red-950/50 ring-2 ring-red-400 scale-105'
-                                        : 'bg-stone-950 text-stone-400 border border-stone-800 hover:text-stone-200'
+                                        : 'bg-stone-955 text-stone-400 border border-stone-800 hover:text-stone-200'
                                     }`}
                                   >
-                                    🔴 A (गैरहजर)
+                                    🔴 {lang === 'mr' ? 'गैरहजर' : 'Absent'}
                                   </button>
                                 </div>
                               </td>
@@ -561,7 +571,9 @@ export const StaffManagementView = () => {
                                 <h4 className="font-extrabold text-stone-100 text-sm">{staff.name}</h4>
                                 <div className="flex items-center gap-2 text-[11px] text-stone-400 mt-0.5">
                                   <span className="bg-stone-955 text-amber-300 font-bold px-2 py-0.5 rounded-lg border border-stone-800">{staff.role}</span>
-                                  <span className="text-emerald-400 font-black font-mono">₹{staff.dailyRate}/दिवस</span>
+                                  <span className="text-emerald-400 font-black font-mono">
+                                    {lang === 'mr' ? `₹${staff.dailyRate}/दिवस` : `₹${staff.dailyRate}/day`}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -569,7 +581,7 @@ export const StaffManagementView = () => {
                             <button
                               onClick={() => setInspectAbsentStaff(staff)}
                               className="p-2 rounded-xl bg-stone-955 text-amber-400 border border-stone-800"
-                              title="गैरहजरी तारखा पहा"
+                              title={lang === 'mr' ? 'गैरहजरी तारखा पहा' : 'View Absent Dates'}
                             >
                               <Eye className="w-4 h-4 text-amber-400" />
                             </button>
@@ -587,7 +599,7 @@ export const StaffManagementView = () => {
                                   : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
-                              🟢 P (हजर)
+                              🟢 {lang === 'mr' ? 'हजर' : 'Present'}
                             </button>
 
                             {/* Half Day */}
@@ -600,7 +612,7 @@ export const StaffManagementView = () => {
                                   : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
-                              🟡 HD (अर्धा)
+                              🟡 {lang === 'mr' ? 'अर्धा दिवस' : 'Half Day'}
                             </button>
 
                             {/* Absent */}
@@ -613,7 +625,7 @@ export const StaffManagementView = () => {
                                   : 'bg-stone-955 text-stone-400 border border-stone-800'
                               }`}
                             >
-                              🔴 A (गैरहजर)
+                              🔴 {lang === 'mr' ? 'गैरहजर' : 'Absent'}
                             </button>
                           </div>
                         </div>
@@ -664,20 +676,28 @@ export const StaffManagementView = () => {
 
                         <div className="space-y-1.5 text-xs">
                           <div className="flex justify-between text-stone-400">
-                            <span>एकूण हजर दिवस (7 दिवसात):</span>
-                            <strong className="text-emerald-400 font-black">{weekly.totalPresent} दिवस</strong>
+                            <span>{lang === 'mr' ? 'एकूण हजर दिवस (7 दिवसांत):' : 'Total Present (7 Days):'}</span>
+                            <strong className="text-emerald-400 font-black">
+                              {lang === 'mr' ? `${weekly.totalPresent} दिवस` : `${weekly.totalPresent} days`}
+                            </strong>
                           </div>
                           <div className="flex justify-between text-stone-400">
-                            <span>पूर्ण हजर दिवस (P):</span>
-                            <strong className="text-emerald-300">{weekly.pCount} दिवस</strong>
+                            <span>{lang === 'mr' ? 'पूर्ण हजर दिवस:' : 'Full Present Days:'}</span>
+                            <strong className="text-emerald-300">
+                              {lang === 'mr' ? `${weekly.pCount} दिवस` : `${weekly.pCount} days`}
+                            </strong>
                           </div>
                           <div className="flex justify-between text-stone-400">
-                            <span>अर्धा दिवस (HD):</span>
-                            <strong className="text-amber-400">{weekly.hdCount} दिवस</strong>
+                            <span>{lang === 'mr' ? 'अर्धा दिवस:' : 'Half Days:'}</span>
+                            <strong className="text-amber-400">
+                              {lang === 'mr' ? `${weekly.hdCount} दिवस` : `${weekly.hdCount} days`}
+                            </strong>
                           </div>
                           <div className="flex justify-between text-stone-400">
-                            <span>गैरहजर दिवस (A):</span>
-                            <strong className="text-red-400">{weekly.aCount} दिवस</strong>
+                            <span>{lang === 'mr' ? 'गैरहजर दिवस:' : 'Absent Days:'}</span>
+                            <strong className="text-red-400">
+                              {lang === 'mr' ? `${weekly.aCount} दिवस` : `${weekly.aCount} days`}
+                            </strong>
                           </div>
                         </div>
 
@@ -688,7 +708,11 @@ export const StaffManagementView = () => {
                           className="w-full py-1.5 rounded-xl bg-stone-950 hover:bg-stone-800 text-amber-400 font-bold text-xs flex items-center justify-center gap-1 border border-stone-800 transition"
                         >
                           <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                          <span>गैरहजरीच्या तारखा पहा ({weekly.aCount + weekly.hdCount})</span>
+                          <span>
+                            {lang === 'mr'
+                              ? `गैरहजरीच्या तारखा पहा (${weekly.aCount + weekly.hdCount})`
+                              : `View Absent Dates (${weekly.aCount + weekly.hdCount})`}
+                          </span>
                         </button>
                       </div>
                     );
@@ -875,13 +899,15 @@ export const StaffManagementView = () => {
                     {/* Advance & Net Payable */}
                     <div className="space-y-1 text-xs bg-stone-950 p-2.5 rounded-xl border border-amber-600/30">
                       <div className="flex items-center justify-between">
-                        <span className="text-stone-400 text-[11px]">घेतलेली उचल (Advance):</span>
+                        <span className="text-stone-400 text-[11px]">{lang === 'mr' ? 'घेतलेली उचल:' : 'Advance Taken:'}</span>
                         <span className="font-bold text-red-400 text-xs">₹{payroll.advanceTotal}</span>
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-stone-800">
-                        <span className="font-bold text-stone-200 text-xs">निव्वळ देय पगार:</span>
+                        <span className="font-bold text-stone-200 text-xs">{lang === 'mr' ? 'निव्वळ देय पगार:' : 'Net Payable:'}</span>
                         {payroll.isPaid ? (
-                          <span className="font-black text-emerald-400 text-xs sm:text-sm">₹0 (पगार पूर्ण जमा)</span>
+                          <span className="font-black text-emerald-400 text-xs sm:text-sm">
+                            {lang === 'mr' ? '₹0 (पगार जमा)' : '₹0 (Paid)'}
+                          </span>
                         ) : (
                           <span className="font-black text-emerald-400 text-sm sm:text-base">₹{payroll.netPayable}</span>
                         )}
@@ -1013,12 +1039,12 @@ export const StaffManagementView = () => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-stone-950 text-amber-400 uppercase tracking-wider font-extrabold border-b border-stone-800">
                     <tr>
-                      <th className="p-3.5">नाव</th>
-                      <th className="p-3.5">पद (Role)</th>
-                      <th className="p-3.5">मोबाईल</th>
-                      <th className="p-3.5">मासिक पगार</th>
-                      <th className="p-3.5">रोजंदारी</th>
-                      <th className="p-3.5 text-right">कृती (Actions)</th>
+                      <th className="p-3.5">{lang === 'mr' ? 'नाव' : 'Name'}</th>
+                      <th className="p-3.5">{lang === 'mr' ? 'पद' : 'Role'}</th>
+                      <th className="p-3.5">{lang === 'mr' ? 'मोबाईल' : 'Mobile'}</th>
+                      <th className="p-3.5">{lang === 'mr' ? 'मासिक पगार' : 'Monthly Salary'}</th>
+                      <th className="p-3.5">{lang === 'mr' ? 'रोजंदारी' : 'Daily Rate'}</th>
+                      <th className="p-3.5 text-right">{lang === 'mr' ? 'कृती' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-800">
@@ -1031,8 +1057,12 @@ export const StaffManagementView = () => {
                           </span>
                         </td>
                         <td className="p-3.5 text-stone-400 font-mono">{staff.phone}</td>
-                        <td className="p-3.5 font-bold text-amber-300">₹{staff.monthlySalary}/महिना</td>
-                        <td className="p-3.5 font-bold text-emerald-400">₹{staff.dailyRate}/दिवस</td>
+                        <td className="p-3.5 font-bold text-amber-300">
+                          {lang === 'mr' ? `₹${staff.monthlySalary}/महिना` : `₹${staff.monthlySalary}/month`}
+                        </td>
+                        <td className="p-3.5 font-bold text-emerald-400">
+                          {lang === 'mr' ? `₹${staff.dailyRate}/दिवस` : `₹${staff.dailyRate}/day`}
+                        </td>
                         <td className="p-3.5 text-right space-x-2">
                           <button
                             type="button"

@@ -137,7 +137,7 @@ export const AnalyticsView = () => {
               type="button"
               onClick={downloadOrdersCsv}
               className="p-1.5 sm:p-2 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/50 flex items-center justify-center transition min-w-[34px] sm:min-w-[38px] min-h-[34px] sm:min-h-[38px] shrink-0"
-              title="ऑर्डर्स व विक्रीचा रिपोर्ट डाऊनलोड करा (CSV)"
+              title={lang === 'mr' ? 'अहवाल डाऊनलोड करा' : 'Download Report'}
             >
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
             </button>
@@ -149,12 +149,12 @@ export const AnalyticsView = () => {
               className="px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-[34px] sm:min-h-[38px] rounded-xl bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white font-black text-[11px] sm:text-xs flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg shadow-red-950/40 transition shrink-0"
             >
               <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-200 shrink-0" />
-              <span>ई-मेल रिपोर्ट</span>
+              <span>{lang === 'mr' ? 'ई-मेल अहवाल' : 'Email Report'}</span>
             </button>
           </div>
         </div>
 
-        {/* Timeframe Pills Bar (Concise Marathi Labels, Scrollable on Mobile) */}
+        {/* Timeframe Pills Bar (Concise Marathi/English Labels) */}
         <div className="flex bg-stone-950 p-1 rounded-xl border border-stone-800 overflow-x-auto no-scrollbar gap-1 w-full max-w-full">
           <button
             type="button"
@@ -163,7 +163,7 @@ export const AnalyticsView = () => {
               timeframe === 'today' ? 'bg-amber-500 text-stone-950 font-black shadow-md' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            आज
+            {lang === 'mr' ? 'आज' : 'Today'}
           </button>
 
           <button
@@ -173,7 +173,7 @@ export const AnalyticsView = () => {
               timeframe === 'weekly' ? 'bg-amber-500 text-stone-950 font-black shadow-md' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            आठवडा
+            {lang === 'mr' ? 'आठवडा' : 'Weekly'}
           </button>
 
           <button
@@ -183,7 +183,7 @@ export const AnalyticsView = () => {
               timeframe === 'monthly' ? 'bg-amber-500 text-stone-950 font-black shadow-md' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            महिना
+            {lang === 'mr' ? 'महिना' : 'Monthly'}
           </button>
 
           <button
@@ -193,7 +193,7 @@ export const AnalyticsView = () => {
               timeframe === 'allTime' ? 'bg-amber-500 text-stone-950 font-black shadow-md' : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            सर्व वेळ
+            {lang === 'mr' ? 'सर्व वेळ' : 'All Time'}
           </button>
         </div>
       </div>
@@ -211,7 +211,9 @@ export const AnalyticsView = () => {
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-950/70 via-stone-900 to-stone-900 border border-amber-500/40 space-y-2 shadow-2xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
-              {timeframe === 'today' ? 'आजचे उत्पन्न' : timeframe === 'weekly' ? 'आठवड्याचे उत्पन्न' : timeframe === 'monthly' ? 'महिन्याचे उत्पन्न' : 'एकूण उत्पन्न'}
+              {lang === 'mr'
+                ? (timeframe === 'today' ? 'आजचे उत्पन्न' : timeframe === 'weekly' ? 'आठवड्याचे उत्पन्न' : timeframe === 'monthly' ? 'महिन्याचे उत्पन्न' : 'एकूण उत्पन्न')
+                : (timeframe === 'today' ? "Today's Revenue" : timeframe === 'weekly' ? "Weekly Revenue" : timeframe === 'monthly' ? "Monthly Revenue" : "Total Revenue")}
             </span>
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40 shadow-inner shrink-0">
               <IndianRupee className="w-5 h-5" />
@@ -221,7 +223,7 @@ export const AnalyticsView = () => {
             ₹{totalRevenue}
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            हॉटेल आराध्या डायनिंग विक्री
+            {lang === 'mr' ? 'हॉटेल आराध्या डायनिंग विक्री' : 'Hotel Aaradhya Dining Sales'}
           </p>
         </div>
 
@@ -229,17 +231,17 @@ export const AnalyticsView = () => {
         <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-2 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-stone-300 uppercase tracking-wider">
-              एकूण ऑर्डर्स संख्या
+              {lang === 'mr' ? 'एकूण ऑर्डर्स संख्या' : 'Total Orders Count'}
             </span>
             <div className="w-10 h-10 rounded-xl bg-stone-800 text-amber-400 flex items-center justify-center border border-stone-700 shadow-inner shrink-0">
               <ShoppingBag className="w-5 h-5" />
             </div>
           </div>
           <div className="text-3xl sm:text-4xl font-black text-stone-100 tracking-tight">
-            {totalOrdersCount} <span className="text-lg font-bold text-stone-400">ऑर्डर्स</span>
+            {totalOrdersCount} <span className="text-lg font-bold text-stone-400">{lang === 'mr' ? 'ऑर्डर्स' : 'Orders'}</span>
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            टेबल व पार्सल एकत्रित
+            {lang === 'mr' ? 'टेबल व पार्सल एकत्रित' : 'Dine-In & Takeaway Combined'}
           </p>
         </div>
 
@@ -247,17 +249,17 @@ export const AnalyticsView = () => {
         <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-2 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-stone-300 uppercase tracking-wider">
-              विकलेले ताट
+              {lang === 'mr' ? 'विकलेले ताट' : 'Thalis Sold'}
             </span>
             <div className="w-10 h-10 rounded-xl bg-orange-950/70 text-orange-400 flex items-center justify-center border border-orange-700/60 shadow-inner shrink-0">
               <Utensils className="w-5 h-5" />
             </div>
           </div>
           <div className="text-3xl sm:text-4xl font-black text-stone-100 tracking-tight">
-            {totalThalisSold} <span className="text-lg font-bold text-stone-400">ताट</span>
+            {totalThalisSold} <span className="text-lg font-bold text-stone-400">{lang === 'mr' ? 'ताट' : 'Thalis'}</span>
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            मटण, चिकन, अंडा व वेज ताट
+            {lang === 'mr' ? 'मटण, चिकन, अंडा व वेज ताट' : 'Mutton, Chicken, Egg & Veg Thalis'}
           </p>
         </div>
 
@@ -267,7 +269,7 @@ export const AnalyticsView = () => {
       <div className="p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-3">
         <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2">
           <Banknote className="w-4 h-4 text-amber-400" />
-          <span>पेमेंट प्रकारानुसार विभाजन (Payment Type Breakup)</span>
+          <span>{lang === 'mr' ? 'पेमेंट प्रकारानुसार विभाजन' : 'Payment Type Breakdown'}</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -275,7 +277,7 @@ export const AnalyticsView = () => {
           <div className="p-3.5 rounded-xl bg-stone-950 border border-emerald-900/40 space-y-1">
             <div className="flex items-center justify-between text-xs text-stone-400">
               <span>💵 {t.cash}</span>
-              <span className="text-emerald-400 font-bold">रोख</span>
+              <span className="text-emerald-400 font-bold">{lang === 'mr' ? 'रोख' : 'Cash'}</span>
             </div>
             <div className="text-xl font-extrabold text-stone-100">₹{cashTotal}</div>
           </div>
@@ -284,7 +286,7 @@ export const AnalyticsView = () => {
           <div className="p-3.5 rounded-xl bg-stone-950 border border-amber-900/40 space-y-1">
             <div className="flex items-center justify-between text-xs text-stone-400">
               <span>📱 {t.upi}</span>
-              <span className="text-amber-400 font-bold">ऑनलाइन</span>
+              <span className="text-amber-400 font-bold">{lang === 'mr' ? 'ऑनलाइन' : 'Online'}</span>
             </div>
             <div className="text-xl font-extrabold text-stone-100">₹{upiTotal}</div>
           </div>
@@ -293,7 +295,7 @@ export const AnalyticsView = () => {
           <div className="p-3.5 rounded-xl bg-stone-950 border border-red-900/40 space-y-1">
             <div className="flex items-center justify-between text-xs text-stone-400">
               <span>📝 {t.udhar}</span>
-              <span className="text-red-400 font-bold">उधार खाते</span>
+              <span className="text-red-400 font-bold">{lang === 'mr' ? 'उधार खाते' : 'Udhar Credit'}</span>
             </div>
             <div className="text-xl font-extrabold text-red-400">₹{udharTotal}</div>
           </div>
@@ -304,7 +306,7 @@ export const AnalyticsView = () => {
       <div className="p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-4">
         <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2">
           <BarChart2 className="w-4 h-4 text-amber-400" />
-          <span>मागील ७ दिवसांचा रोजचा विक्री ट्रेंड (Daily Revenue Trend)</span>
+          <span>{lang === 'mr' ? 'मागील ७ दिवसांचा रोजचा विक्री ट्रेंड' : 'Last 7 Days Sales Trend'}</span>
         </h4>
 
         <div className="h-44 flex items-end justify-between gap-2 pt-6 pb-2 px-2 bg-stone-950/60 rounded-xl border border-stone-800">
@@ -334,19 +336,19 @@ export const AnalyticsView = () => {
       <div className="p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-4">
         <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-400" />
-          <span>सर्वाधिक विक्री झालेले पदार्थ (Top Selling Dishes)</span>
+          <span>{lang === 'mr' ? 'सर्वाधिक विक्री झालेले पदार्थ' : 'Top Selling Dishes'}</span>
         </h4>
 
         <div className="space-y-3">
           {topSellingItems.length === 0 ? (
             <p className="text-xs text-stone-400 italic py-4 text-center">
-              या निवडलेल्या कालावधीत कोणतीही विक्री झाली नाही.
+              {lang === 'mr' ? 'या निवडलेल्या कालावधीत कोणतीही विक्री झाली नाही.' : 'No sales records found for selected period.'}
             </p>
           ) : (
             topSellingItems.map((item, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-xl bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-3 text-xs"
+                className="p-3 rounded-xl bg-stone-955/60 border border-stone-800 flex items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-extrabold flex items-center justify-center border border-amber-500/40 text-[11px]">
@@ -357,7 +359,7 @@ export const AnalyticsView = () => {
                       {lang === 'mr' ? item.nameMr : item.nameEn}
                     </h5>
                     <span className="text-[10px] text-stone-400">
-                      विक्री: {item.count} नग
+                      {lang === 'mr' ? `विक्री: ${item.count} नग` : `Sold: ${item.count} qty`}
                     </span>
                   </div>
                 </div>

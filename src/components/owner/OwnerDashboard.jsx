@@ -123,7 +123,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-orange-950/40 hover:scale-105 transition min-h-[40px]"
           >
             <Plus className="w-4 h-4" />
-            <span>{lang === 'mr' ? '+ नवीन टेबल ऑर्डर घ्या' : '+ Take New Table Order'}</span>
+            <span>{lang === 'mr' ? 'नवीन टेबल ऑर्डर घ्या' : 'Take New Table Order'}</span>
           </button>
         )}
 
@@ -179,8 +179,8 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                 </h3>
                 <p className="text-xs text-stone-400">
                   {lang === 'mr'
-                    ? 'नवीन ऑर्डर घेण्याकरिता टेबल डॅशबोर्ड किंवा "+ नवीन ऑर्डर" बटणावर क्लिक करा.'
-                    : 'To place a new order, navigate to Tables or tap "+ Take New Table Order".'}
+                    ? 'नवीन ऑर्डर घेण्याकरिता टेबल डॅशबोर्ड किंवा "नवीन ऑर्डर" बटणावर क्लिक करा.'
+                    : 'To place a new order, navigate to Tables or tap "Take New Table Order".'}
                 </p>
               </div>
               <button
@@ -189,7 +189,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                 className="mt-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs flex items-center gap-1.5 transition shadow-lg shadow-orange-950/40 cursor-pointer"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>{lang === 'mr' ? '+ नवीन टेबल ऑर्डर घ्या' : '+ Take New Table Order'}</span>
+                <span>{lang === 'mr' ? 'नवीन टेबल ऑर्डर घ्या' : 'Take New Table Order'}</span>
               </button>
             </div>
           ) : (
@@ -335,14 +335,16 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
           {/* Menu Items Selector */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-stone-200">पदार्थ निवडा (Select Menu Items)</h3>
+              <h3 className="text-sm font-bold text-stone-200">
+                {lang === 'mr' ? 'पदार्थ निवडा' : 'Select Menu Items'}
+              </h3>
               
               {/* POS Item Search Input */}
               <div className="relative flex-1 sm:max-w-xs">
                 <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="शोधा (Search menu...)"
+                  placeholder={lang === 'mr' ? 'मेनू शोधा...' : 'Search menu...'}
                   value={posSearch}
                   onChange={(e) => setPosSearch(e.target.value)}
                   className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-8 pr-3 py-2 text-xs text-stone-100 focus:outline-none focus:border-amber-500"
@@ -353,12 +355,12 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
             {/* Category Filter Pills (Mobile Scrollable) */}
             <div className="flex bg-stone-950 p-1 rounded-xl border border-stone-800 overflow-x-auto no-scrollbar gap-1">
               {[
-                { id: 'all', label: 'सर्व (All)' },
-                { id: 'veg', label: 'शाकाहारी', dot: 'bg-emerald-500' },
-                { id: 'egg', label: 'अंडाकरी', dot: 'bg-amber-400' },
-                { id: 'chicken', label: 'चिकन', dot: 'bg-red-500' },
-                { id: 'mutton', label: 'मटण', dot: 'bg-orange-600' },
-                { id: 'extras', label: 'इतर', dot: 'bg-sky-500' }
+                { id: 'all', labelMr: 'सर्व', labelEn: 'All' },
+                { id: 'veg', labelMr: 'शाकाहारी', labelEn: 'Veg', dot: 'bg-emerald-500' },
+                { id: 'egg', labelMr: 'अंडाकरी', labelEn: 'Egg', dot: 'bg-amber-400' },
+                { id: 'chicken', labelMr: 'चिकन', labelEn: 'Chicken', dot: 'bg-red-500' },
+                { id: 'mutton', labelMr: 'मटण', labelEn: 'Mutton', dot: 'bg-orange-600' },
+                { id: 'extras', labelMr: 'इतर', labelEn: 'Extras', dot: 'bg-sky-500' }
               ].map((cat) => (
                 <button
                   key={cat.id}
@@ -369,7 +371,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                   }`}
                 >
                   {cat.dot && <span className={`w-2 h-2 rounded-full ${cat.dot}`} />}
-                  <span>{cat.label}</span>
+                  <span>{lang === 'mr' ? cat.labelMr : cat.labelEn}</span>
                 </button>
               ))}
             </div>
@@ -405,7 +407,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             item.category === 'egg' ? 'bg-amber-400' :
                             item.category === 'chicken' ? 'bg-red-500' : 'bg-orange-600'
                           }`} />
-                          <span>{item.nameMr}</span>
+                          <span>{lang === 'mr' ? item.nameMr : (item.nameEn || item.nameMr)}</span>
                         </h4>
                         <span className="text-[11px] text-amber-400 font-mono font-bold">₹{item.price}</span>
                       </div>
@@ -541,14 +543,14 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             className="w-full py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-bold text-xs flex items-center justify-center gap-1 transition border border-rose-600/30 min-h-[36px]"
                           >
                             <X className="w-3.5 h-3.5 text-rose-400" />
-                            <span>❌ {lang === 'mr' ? 'ऑर्डर रद्द करा (Cancel)' : 'Cancel Order'}</span>
+                            <span>❌ {lang === 'mr' ? 'ऑर्डर रद्द करा' : 'Cancel Order'}</span>
                           </button>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         <p className="text-xs font-bold text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded-lg w-fit border border-emerald-800/40">
-                          ✓ {lang === 'mr' ? 'मोकळे टेबल (Available)' : 'Available Table'}
+                          ✓ {lang === 'mr' ? 'मोकळे टेबल' : 'Available Table'}
                         </p>
                         
                         <div className="space-y-2">
@@ -560,7 +562,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             className="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-400 font-bold text-xs flex items-center justify-center gap-1 transition border border-amber-600/30"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>+ नवीन ऑर्डर घ्या</span>
+                            <span>{lang === 'mr' ? 'नवीन ऑर्डर घ्या' : 'Take New Order'}</span>
                           </button>
 
                           {/* Option to Remove Custom Table when empty */}
