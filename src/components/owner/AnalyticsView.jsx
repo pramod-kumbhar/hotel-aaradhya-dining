@@ -70,23 +70,37 @@ export const AnalyticsView = () => {
     .filter((o) => o.paymentMethod === 'Udhar')
     .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
 
-  // Thalis count & Category Sales Map
+  // Thalis, Plates, and Extras counts & Category Sales Map
   let totalThalisSold = 0;
+  let totalPlatesSold = 0;
+  let totalExtrasSold = 0;
+  let totalExtraThalisSold = 0;
+
   const categorySalesMap = { veg: 0, egg: 0, chicken: 0, mutton: 0, extras: 0 };
   const itemSalesMap = {};
 
   filteredOrders.forEach((ord) => {
     ord.items.forEach((item) => {
       const lineTotal = item.price * item.quantity + (item.extraThalis || 0) * 60;
+      
       if (item.isThali) {
         totalThalisSold += item.quantity;
+      } else if (item.category === 'extras' || Number(item.price) < 50) {
+        totalExtrasSold += item.quantity;
+      } else {
+        totalPlatesSold += item.quantity;
       }
+
+      if (item.extraThalis > 0) {
+        totalExtraThalisSold += item.extraThalis;
+      }
+
       if (categorySalesMap[item.category] !== undefined) {
         categorySalesMap[item.category] += lineTotal;
       }
 
       if (!itemSalesMap[item.nameMr]) {
-        itemSalesMap[item.nameMr] = { nameMr: item.nameMr, nameEn: item.nameEn, count: 0, revenue: 0 };
+        itemSalesMap[item.nameMr] = { nameMr: item.nameMr, nameEn: item.nameEn, count: 0, revenue: 0, category: item.category };
       }
       itemSalesMap[item.nameMr].count += item.quantity;
       itemSalesMap[item.nameMr].revenue += lineTotal;
@@ -204,10 +218,10 @@ export const AnalyticsView = () => {
         onClose={() => setIsEodModalOpen(false)}
       />
 
-      {/* Primary Metrics Grid (Clean 3-Column Responsive Grid) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* Primary Metrics Grid (Responsive Layout for Revenue, Orders, Thalis, Plates & Extras) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4">
         
-        {/* Total Revenue */}
+        {/* 1. Total Revenue */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-950/70 via-stone-900 to-stone-900 border border-amber-500/40 space-y-2 shadow-2xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
@@ -219,15 +233,15 @@ export const AnalyticsView = () => {
               <IndianRupee className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-black text-amber-300 tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight">
             ₹{totalRevenue}
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            {lang === 'mr' ? 'हॉटेल आराध्या डायनिंग विक्री' : 'Hotel Aaradhya Dining Sales'}
+            {lang === 'mr' ? 'हॉटेल आराध्या डायनिंग विक्री' : 'Hotel Aaradhya Sales'}
           </p>
         </div>
 
-        {/* Total Orders Count */}
+        {/* 2. Total Orders Count */}
         <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-2 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-stone-300 uppercase tracking-wider">
@@ -237,29 +251,67 @@ export const AnalyticsView = () => {
               <ShoppingBag className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-black text-stone-100 tracking-tight">
-            {totalOrdersCount} <span className="text-lg font-bold text-stone-400">{lang === 'mr' ? 'ऑर्डर्स' : 'Orders'}</span>
+          <div className="text-2xl sm:text-3xl font-black text-stone-100 tracking-tight">
+            {totalOrdersCount} <span className="text-sm font-bold text-stone-400">{lang === 'mr' ? 'ऑर्डर्स' : 'Orders'}</span>
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            {lang === 'mr' ? 'टेबल व पार्सल एकत्रित' : 'Dine-In & Takeaway Combined'}
+            {lang === 'mr' ? 'टेबल व पार्सल एकत्रित' : 'Dine-In & Takeaway'}
           </p>
         </div>
 
-        {/* Total Thalis Sold */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 space-y-2 shadow-xl relative overflow-hidden">
+        {/* 3. Total Thalis Sold */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-orange-900/40 space-y-2 shadow-xl relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-stone-300 uppercase tracking-wider">
-              {lang === 'mr' ? 'विकलेले ताट' : 'Thalis Sold'}
+            <span className="text-xs font-black text-orange-400 uppercase tracking-wider">
+              {lang === 'mr' ? 'विकलेले ताट (थाळी)' : 'Thalis Sold'}
             </span>
             <div className="w-10 h-10 rounded-xl bg-orange-950/70 text-orange-400 flex items-center justify-center border border-orange-700/60 shadow-inner shrink-0">
               <Utensils className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-black text-stone-100 tracking-tight">
-            {totalThalisSold} <span className="text-lg font-bold text-stone-400">{lang === 'mr' ? 'ताट' : 'Thalis'}</span>
+          <div className="text-2xl sm:text-3xl font-black text-orange-300 tracking-tight">
+            {totalThalisSold} <span className="text-sm font-bold text-stone-400">{lang === 'mr' ? 'ताट' : 'Thalis'}</span>
           </div>
           <p className="text-[11px] text-stone-400 font-semibold">
-            {lang === 'mr' ? 'मटण, चिकन, अंडा व वेज ताट' : 'Mutton, Chicken, Egg & Veg Thalis'}
+            {lang === 'mr' ? 'मटण, चिकन, अंडा व वेज ताट' : 'Full Meal Thalis'}
+          </p>
+        </div>
+
+        {/* 4. Total Plates Sold */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-amber-900/40 space-y-2 shadow-xl relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
+              {lang === 'mr' ? 'विकलेल्या प्लेट्स' : 'Plates Sold'}
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-amber-950/70 text-amber-400 flex items-center justify-center border border-amber-700/60 shadow-inner shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-amber-200 tracking-tight">
+            {totalPlatesSold} <span className="text-sm font-bold text-stone-400">{lang === 'mr' ? 'प्लेट्स' : 'Plates'}</span>
+          </div>
+          <p className="text-[11px] text-stone-400 font-semibold">
+            {lang === 'mr' ? 'सुक्का मटण, चिकन, भाजी व ऑम्लेट' : 'Single Curry & Fry Plates'}
+          </p>
+        </div>
+
+        {/* 5. Total Extras Sold */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-cyan-900/40 space-y-2 shadow-xl relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-cyan-400 uppercase tracking-wider">
+              {lang === 'mr' ? 'एक्स्ट्रा पदार्थ' : 'Extras Sold'}
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-cyan-950/70 text-cyan-400 flex items-center justify-center border border-cyan-700/60 shadow-inner shrink-0">
+              <PieChart className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-cyan-300 tracking-tight">
+            {totalExtrasSold} <span className="text-sm font-bold text-stone-400">{lang === 'mr' ? 'नग' : 'Items'}</span>
+          </div>
+          <p className="text-[11px] text-stone-400 font-semibold truncate" title="भाकरी, चपाती, पापड, सोलकढी, ताक, रस्सा इ.">
+            {lang === 'mr' 
+              ? `भाकरी, पापड, सोलकढी इ. ${totalExtraThalisSold > 0 ? `(+${totalExtraThalisSold} ताट)` : ''}`
+              : `Bhakri, Papad, Drinks (+${totalExtraThalisSold} thalis)`}
           </p>
         </div>
 

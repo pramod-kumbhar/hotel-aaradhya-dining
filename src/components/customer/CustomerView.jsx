@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { CATEGORIES } from '../../data/menuData';
-import { Search, Flame, Leaf, Egg, Drumstick, Utensils, Plus, Check, Info, ShieldAlert, Sparkles } from 'lucide-react';
+import { CATEGORIES, sortMenuItemsThaliFirst } from '../../data/menuData';
+import { OrderStatusModal } from './OrderStatusModal';
+import { EditOrderModal } from '../common/EditOrderModal';
+import { Search, Flame, Leaf, Egg, Drumstick, Utensils, Plus, Check, Info, ShieldAlert, Sparkles, Edit3, Clock } from 'lucide-react';
 
 export const CustomerView = ({ onOpenCart }) => {
-  const { lang, tableNo, setTableNo, menuItems, cart, orders, addToCart, allTables, t } = useApp();
+  const { lang, tableNo, setTableNo, menuItems, cart, orders, activeOrder, addToCart, allTables, t } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all', 'thali', 'plate'
   const [selectedItemForModal, setSelectedItemForModal] = useState(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Active occupied tables
+  // Active occupied tables (status is ongoing if not completed and not cancelled)
   const occupiedTables = new Set(
-    orders.filter((o) => o.status !== 'completed').map((o) => o.tableNo)
+    orders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled').map((o) => o.tableNo)
   );
 
   // Dynamic table list from backend + local fallback
@@ -33,19 +37,21 @@ export const CustomerView = ({ onOpenCart }) => {
     }
   };
 
-  // Filtered menu items
-  const filteredItems = menuItems.filter((item) => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    const matchesSearch =
-      item.nameMr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.nameEn.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      filterType === 'all' ||
-      (filterType === 'thali' && item.isThali) ||
-      (filterType === 'plate' && !item.isThali);
+  // Filtered menu items sorted Thali first -> Plates second -> Extras third
+  const filteredItems = sortMenuItemsThaliFirst(
+    menuItems.filter((item) => {
+      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+      const matchesSearch =
+        item.nameMr.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.nameEn.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType =
+        filterType === 'all' ||
+        (filterType === 'thali' && item.isThali) ||
+        (filterType === 'plate' && !item.isThali);
 
-    return matchesCategory && matchesSearch && matchesType;
-  });
+      return matchesCategory && matchesSearch && matchesType;
+    })
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24">
@@ -77,8 +83,13 @@ export const CustomerView = ({ onOpenCart }) => {
             return (
               <button
                 key={tbl}
-                disabled={isOccupied}
-                onClick={() => setTableNo(tbl)}
+                onClick={() => {
+                  if (isOccupied) {
+                    alert(lang === 'mr' ? `⚠️ ${tbl} उपलब्ध नाही! या टेबलवर आधीच चालू ऑर्डर सुरू आहे.` : `⚠️ ${tbl} is not available! An order is already ongoing on this table.`);
+                    return;
+                  }
+                  setTableNo(tbl);
+                }}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition border flex items-center gap-1.5 ${
                   isSelected
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 border-amber-400 shadow-md scale-105 font-black'
@@ -312,6 +323,48 @@ export const CustomerView = ({ onOpenCart }) => {
         </div>
       )}
 
+      {/* Floating Active Order Tracker & Quick Edit Banner (When an Order is Ongoing) */}
+      {activeOrder && activeOrder.status !== 'completed' && activeOrder.status !== 'cancelled' && cart.length === 0 && (
+        <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 z-40 max-w-lg mx-auto animate-fade-in">
+          <div className="w-full p-3 rounded-2xl bg-stone-900/95 border border-amber-500/60 shadow-2xl backdrop-blur-md flex items-center justify-between gap-2">
+            <div 
+              onClick={() => setIsStatusModalOpen(true)}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shrink-0 animate-pulse">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h5 className="text-xs font-bold text-amber-300 truncate">
+                  {activeOrder.tableNo} - {lang === 'mr' ? 'चालू ऑर्डर' : 'Active Order'}
+                </h5>
+                <span className="text-[11px] text-stone-300 font-black">₹{activeOrder.grandTotal}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs flex items-center gap-1 hover:scale-105 transition shadow"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>{lang === 'mr' ? 'बदला' : 'Edit'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsStatusModalOpen(true)}
+                className="p-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-bold transition border border-stone-700"
+                title="स्टेटस तपासा"
+              >
+                <Clock className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Mobile/Desktop Cart Button */}
       {cart.length > 0 && (
         <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 z-40 max-w-lg mx-auto">
@@ -336,6 +389,23 @@ export const CustomerView = ({ onOpenCart }) => {
             </div>
           </button>
         </div>
+      )}
+
+      {/* Order Status Modal */}
+      {isStatusModalOpen && (
+        <OrderStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+        />
+      )}
+
+      {/* Edit Order Modal */}
+      {isEditModalOpen && activeOrder && (
+        <EditOrderModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          order={activeOrder}
+        />
       )}
 
     </div>

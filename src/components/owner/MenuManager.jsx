@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { sortMenuItemsThaliFirst } from '../../data/menuData';
 import { Plus, Edit2, Check, X, ShieldAlert, Sparkles, Utensils, Flame } from 'lucide-react';
 
 export const MenuManager = () => {
@@ -74,9 +75,9 @@ export const MenuManager = () => {
         </button>
       </div>
 
-      {/* Items Grid */}
+      {/* Items Grid (Thalis first -> Plates second -> Extras third) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {menuItems.map((item) => (
+        {sortMenuItemsThaliFirst(menuItems).map((item) => (
           <div
             key={item.id}
             className={`p-4 rounded-xl border transition flex flex-col justify-between ${

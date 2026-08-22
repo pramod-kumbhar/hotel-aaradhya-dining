@@ -230,6 +230,39 @@ app.put('/api/orders/:id', async (req, res) => {
   }
 });
 
+// 4. Clear All Daily Orders on End-of-Day Close (Fresh Start for New Day)
+app.delete('/api/orders', async (req, res) => {
+  try {
+    await executeWithRetry('DELETE FROM orders');
+    res.json({ success: true, message: 'All daily orders cleared for new day!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/orders/clear-all', async (req, res) => {
+  try {
+    await executeWithRetry('DELETE FROM orders');
+    res.json({ success: true, message: 'All daily orders cleared for new day!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Delete Single Order Permanently from Database (When Order is Cancelled)
+app.delete('/api/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await executeWithRetry({
+      sql: 'DELETE FROM orders WHERE id = ?',
+      args: [id]
+    });
+    res.json({ success: true, message: 'Order permanently deleted from DB' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ===================================================
 // STAFF MANAGEMENT API ENDPOINTS (Clean Rebuild)
 // ===================================================
@@ -653,6 +686,19 @@ app.post('/api/udhar-ledger', async (req, res) => {
   }
 });
 
+app.delete('/api/udhar-ledger/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+  try {
+    await executeWithRetry({
+      sql: 'DELETE FROM udhar_ledger WHERE order_id = ? OR id = ?',
+      args: [orderId, orderId]
+    });
+    res.json({ success: true, message: 'Udhar record removed from DB!' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 15. End-of-Day Reports
 app.get('/api/eod-reports', async (req, res) => {
   try {
@@ -855,12 +901,14 @@ app.use((req, res, next) => {
 });
 
 const startServer = async () => {
-  await initDb();
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`=================================================`);
     console.log(`🚀 Turso DB & SMTP Express Server Running on Port ${PORT}`);
     console.log(`📧 SMTP Verification URL: http://localhost:${PORT}/api/verify-smtp`);
     console.log(`=================================================`);
+  });
+  initDb().catch((err) => {
+    console.error('⚠️ DB Init Warning:', err.message);
   });
   // Keep Node.js process alive indefinitely
   setInterval(() => {}, 1000 * 60 * 60);

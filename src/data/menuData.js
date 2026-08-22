@@ -232,6 +232,18 @@ export const INITIAL_MENU_ITEMS = [
     descEn: "Spicy Pan-Fried Paneer Cubes",
     spicyLevel: "Medium"
   },
+  {
+    id: "v14",
+    nameMr: "राईस ताट (राईस १ प्लेट, रस्सा वाटी)",
+    nameEn: "Rice Thali (1 Plate Rice + Rassa)",
+    category: "veg",
+    price: 100,
+    isThali: true,
+    available: true,
+    descMr: "१ प्लेट इंदरयाणी भात सोबत कोल्हापुरी तांबडा-पांढरा रस्सा वाटी",
+    descEn: "Steamed Rice with Authentic Kolhapuri Curry Bowl",
+    spicyLevel: "Medium"
+  },
 
   // --- अंडाकरी (Egg Curry) ---
   {
@@ -344,30 +356,6 @@ export const INITIAL_MENU_ITEMS = [
     spicyLevel: "Mild"
   },
   {
-    id: "e10",
-    nameMr: "रोटी / भाकरी",
-    nameEn: "Roti / Bhakri",
-    category: "egg",
-    price: 20,
-    isThali: false,
-    available: true,
-    descMr: "गव्हाची गरमागरम रोटी / भाकरी",
-    descEn: "Hot Tawa Roti / Chapati",
-    spicyLevel: "None"
-  },
-  {
-    id: "e11",
-    nameMr: "मिरंची वाटी",
-    nameEn: "Mirchi Vati",
-    category: "egg",
-    price: 20,
-    isThali: false,
-    available: true,
-    descMr: "तळलेली तिखट मिरंची वाटी",
-    descEn: "Fried Green Chili Bowl",
-    spicyLevel: "Hot"
-  },
-  {
     id: "e12",
     nameMr: "ऑम्लेट",
     nameEn: "Omelette",
@@ -389,42 +377,6 @@ export const INITIAL_MENU_ITEMS = [
     available: true,
     descMr: "कांदा-टमाटा अंडी भुर्जी",
     descEn: "Spiced Scrambled Eggs Portion",
-    spicyLevel: "Medium"
-  },
-  {
-    id: "e14",
-    nameMr: "सिंगल बॉईल एक्स्ट्रा",
-    nameEn: "Single Boiled Egg",
-    category: "egg",
-    price: 15,
-    isThali: false,
-    available: true,
-    descMr: "१ उकडलेले अंडे",
-    descEn: "1 Hard Boiled Egg",
-    spicyLevel: "None"
-  },
-  {
-    id: "e15",
-    nameMr: "पापड",
-    nameEn: "Papad",
-    category: "egg",
-    price: 10,
-    isThali: false,
-    available: true,
-    descMr: "भाजलेला / तळलेला उडीद पापड",
-    descEn: "Roasted / Fried Udad Papad",
-    spicyLevel: "Mild"
-  },
-  {
-    id: "e16",
-    nameMr: "राईस ताट (राईस १ प्लेट, रस्सा वाटी)",
-    nameEn: "Rice Thali (1 Plate Rice + Rassa)",
-    category: "egg",
-    price: 100,
-    isThali: true,
-    available: true,
-    descMr: "१ प्लेट इंदरयाणी भात सोबत कोल्हापुरी तांबडा-पांढरा रस्सा वाटी",
-    descEn: "Steamed Rice with Authentic Kolhapuri Curry Bowl",
     spicyLevel: "Medium"
   },
 
@@ -844,5 +796,49 @@ export const INITIAL_MENU_ITEMS = [
     descMr: "ताजा कांदा, लिंबू आणि काकडी प्लेट",
     descEn: "Fresh Onion, Lemon & Cucumber Salad Plate",
     spicyLevel: "None"
+  },
+  {
+    id: "x11",
+    nameMr: "तळलेली मिरची वाटी",
+    nameEn: "Fried Green Chili Bowl",
+    category: "extras",
+    price: 20,
+    isThali: false,
+    available: true,
+    descMr: "तळलेली खास तिखट हिरवी मिरची वाटी",
+    descEn: "Fried Green Chili Bowl with Salt",
+    spicyLevel: "Hot"
+  },
+  {
+    id: "x12",
+    nameMr: "सिंगल बॉईल अंडे",
+    nameEn: "Single Boiled Egg",
+    category: "extras",
+    price: 15,
+    isThali: false,
+    available: true,
+    descMr: "१ उकडलेले अंडे",
+    descEn: "1 Hard Boiled Egg",
+    spicyLevel: "None"
   }
 ];
+
+// Sort Menu Items: Thalis first -> Plates second -> Extras/Sides third
+export const sortMenuItemsThaliFirst = (items) => {
+  if (!items || !Array.isArray(items)) return [];
+  return [...items].sort((a, b) => {
+    // 1. Thali first
+    const aIsThali = a.isThali ? 1 : 0;
+    const bIsThali = b.isThali ? 1 : 0;
+    if (aIsThali !== bIsThali) return bIsThali - aIsThali;
+
+    // 2. Main plates (price >= 50 and category !== 'extras') before extras (< 50 or category === 'extras')
+    const aIsExtra = a.category === 'extras' || Number(a.price) < 50 ? 1 : 0;
+    const bIsExtra = b.category === 'extras' || Number(b.price) < 50 ? 1 : 0;
+    if (aIsExtra !== bIsExtra) return aIsExtra - bIsExtra;
+
+    // 3. Higher price dishes before lower price
+    return Number(b.price) - Number(a.price);
+  });
+};
+

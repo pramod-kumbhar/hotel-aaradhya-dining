@@ -5,7 +5,7 @@ import { Mail, Lock, CheckCircle2, Send, X, ShieldAlert, Sparkles, Banknote, Cre
 import confetti from 'canvas-confetti';
 
 export const EodCloseModal = ({ isOpen, onClose }) => {
-  const { orders, ownerEmails, addOwnerEmail, removeOwnerEmail, lang, saveEodReport } = useApp();
+  const { orders, ownerEmails, addOwnerEmail, removeOwnerEmail, lang, saveEodReport, closeDayAndRefreshKds } = useApp();
   const [ownerEmail, setOwnerEmail] = useState('');
   const [newEmailInput, setNewEmailInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -44,13 +44,24 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
   const upiTotal = todayOrders.filter((o) => o.paymentMethod === 'UPI').reduce((sum, o) => sum + o.grandTotal, 0);
   const udharTotal = todayOrders.filter((o) => o.paymentMethod === 'Udhar').reduce((sum, o) => sum + o.grandTotal, 0);
 
-  // Count Veg vs Non-Veg
+  // Count Thalis, Plates, and Extras
+  let thaliCount = 0;
+  let plateCount = 0;
+  let extrasCount = 0;
   let vegCount = 0;
   let nonVegCount = 0;
   const dishCounts = {};
 
   todayOrders.forEach((order) => {
     order.items?.forEach((item) => {
+      if (item.isThali) {
+        thaliCount += item.quantity;
+      } else if (item.category === 'extras' || Number(item.price) < 50) {
+        extrasCount += item.quantity;
+      } else {
+        plateCount += item.quantity;
+      }
+
       if (item.category === 'veg' || item.isVeg) {
         vegCount += item.quantity;
       } else {
@@ -59,7 +70,7 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
 
       dishCounts[item.id] = dishCounts[item.id] || { nameMr: item.nameMr, count: 0, revenue: 0 };
       dishCounts[item.id].count += item.quantity;
-      dishCounts[item.id].revenue += item.price * item.quantity;
+      dishCounts[item.id].revenue += (item.price * item.quantity + (item.extraThalis || 0) * 60);
     });
   });
 
@@ -71,6 +82,9 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     date: new Date().toLocaleDateString('mr-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     totalRevenue,
     totalOrders,
+    thaliCount,
+    plateCount,
+    extrasCount,
     vegCount,
     nonVegCount,
     cashTotal,
@@ -88,8 +102,17 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
 
     setIsSending(true);
 
+    // 1. Save EOD report in database
     await saveEodReport?.(reportData).catch(() => {});
+
+    // 2. Send the EOD report email to owners
     const res = await sendEodReportEmail(reportData, ownerEmail);
+
+    // 3. Automatically refresh and clear all KDS orders to start fresh from new orders
+    if (closeDayAndRefreshKds) {
+      await closeDayAndRefreshKds();
+    }
+
     setIsSending(false);
     setSentSuccess(true);
     if (res?.mailtoUrl) {
@@ -141,16 +164,18 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
             <span className="text-lg sm:text-xl font-black text-amber-400">₹{totalRevenue}/-</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
-              <span className="text-stone-400 block text-[10px]">{lang === 'mr' ? 'पूर्ण ऑर्डर्स' : 'Completed Orders'}</span>
-              <span className="font-extrabold text-stone-200">
-                {lang === 'mr' ? `${totalOrders} ऑर्डर्स` : `${totalOrders} Orders`}
-              </span>
+          <div className="grid grid-cols-3 gap-1.5 text-xs text-center">
+            <div className="bg-stone-900 p-2 rounded-xl border border-orange-900/40">
+              <span className="text-orange-400 block text-[10px] font-bold">{lang === 'mr' ? '🍱 ताट' : '🍱 Thalis'}</span>
+              <span className="font-extrabold text-orange-300">{thaliCount}</span>
             </div>
-            <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
-              <span className="text-stone-400 block text-[10px]">{lang === 'mr' ? 'जेवण विक्री' : 'Meals Sold'}</span>
-              <span className="font-extrabold text-emerald-400">🥗 {vegCount}</span> • <span className="font-extrabold text-red-400">🍗 {nonVegCount}</span>
+            <div className="bg-stone-900 p-2 rounded-xl border border-amber-900/40">
+              <span className="text-amber-400 block text-[10px] font-bold">{lang === 'mr' ? '🍛 प्लेट्स' : '🍛 Plates'}</span>
+              <span className="font-extrabold text-amber-300">{plateCount}</span>
+            </div>
+            <div className="bg-stone-900 p-2 rounded-xl border border-cyan-900/40">
+              <span className="text-cyan-400 block text-[10px] font-bold">{lang === 'mr' ? '🫓 एक्स्ट्रा' : '🫓 Extras'}</span>
+              <span className="font-extrabold text-cyan-300">{extrasCount}</span>
             </div>
           </div>
 

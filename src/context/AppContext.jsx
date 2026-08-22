@@ -13,35 +13,28 @@ const SEED_ORDERS = [];
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').trim();
 
-const getApiUrl = (path) => {
-  const cleanPath = path.startsWith('/') ? path : '/' + path;
-  if (!API_BASE_URL) return cleanPath;
-  const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-  return `${baseUrl}${cleanPath}`;
-};
-
 const safeFetchJson = async (url, options = {}) => {
-  const primaryUrl = getApiUrl(url);
+  const cleanPath = url.startsWith('/') ? url : '/' + url;
+  const urlsToTry = [];
 
-  try {
-    const res = await fetch(primaryUrl, options);
-    if (res.ok) {
-      const data = await res.json();
-      return data;
-    }
-  } catch (e) {
-    console.warn(`API fetch notice [${primaryUrl}]:`, e.message);
-  }
-
-  // Fallback to relative URL if custom VITE_API_URL failed
   if (API_BASE_URL) {
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    urlsToTry.push(`${baseUrl}${cleanPath}`);
+  }
+  if (!API_BASE_URL && typeof window !== 'undefined') {
+    urlsToTry.push(`http://127.0.0.1:5000${cleanPath}`);
+  }
+  urlsToTry.push(cleanPath);
+
+  for (const targetUrl of urlsToTry) {
     try {
-      const cleanPath = url.startsWith('/') ? url : '/' + url;
-      const res = await fetch(cleanPath, options);
+      const res = await fetch(targetUrl, options);
       if (res.ok) {
         return await res.json();
       }
-    } catch (e) {}
+    } catch (e) {
+      // try next fallback candidate
+    }
   }
 
   return null;
@@ -212,24 +205,44 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
-  // Menu items state with auto-merge for default dataset
+  // Menu items state with auto-merge for default dataset & price < 50 extras categorization
+  const sanitizeMenuItems = (items) => {
+    if (!Array.isArray(items)) return INITIAL_MENU_ITEMS;
+    const cleaned = items
+      .filter((item) => !['e10', 'e11', 'e14', 'e15', 'e16'].includes(item.id))
+      .map((item) => {
+        if (Number(item.price) < 50 && item.category !== 'extras') {
+          return { ...item, category: 'extras', isThali: false };
+        }
+        return item;
+      });
+
+    const existingIds = new Set(cleaned.map((item) => item.id));
+    const missingDefaults = INITIAL_MENU_ITEMS.filter((item) => !existingIds.has(item.id));
+    return [...cleaned, ...missingDefaults];
+  };
+
   const [menuItems, setMenuItems] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_MENU_KEY);
     if (!saved) return INITIAL_MENU_ITEMS;
     try {
       const parsed = JSON.parse(saved);
-      const existingIds = new Set(parsed.map((item) => item.id));
-      const missingDefaults = INITIAL_MENU_ITEMS.filter((item) => !existingIds.has(item.id));
-      return [...parsed, ...missingDefaults];
+      return sanitizeMenuItems(parsed);
     } catch (e) {
       return INITIAL_MENU_ITEMS;
     }
   });
 
-  // Orders state
+  // Orders state (exclude any cancelled orders)
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
-    return saved ? JSON.parse(saved) : SEED_ORDERS;
+    if (!saved) return SEED_ORDERS;
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed.filter((o) => o.status !== 'cancelled');
+    } catch {
+      return SEED_ORDERS;
+    }
   });
 
   // Staff Members State (Empty by default for production deployment)
@@ -363,22 +376,14 @@ export const AppProvider = ({ children }) => {
       ]);
 
       if (ordersRes?.success && Array.isArray(ordersRes.orders)) {
-        setOrders((prev) => {
-          const cancelledIds = new Set(prev.filter((o) => o.status === 'cancelled').map((o) => o.id));
-          return ordersRes.orders.map((o) => {
-            if (cancelledIds.has(o.id) && o.status !== 'cancelled') {
-              return { ...o, status: 'cancelled' };
-            }
-            return o;
-          });
-        });
+        setOrders(ordersRes.orders.filter((o) => o.status !== 'cancelled'));
       }
       if (staffRes?.success && Array.isArray(staffRes.staff)) {
         setStaffMembers(staffRes.staff);
         localStorage.setItem('aaradhya_staff_db', JSON.stringify(staffRes.staff));
       }
       if (menuRes?.success && menuRes.menuItems?.length > 0) {
-        setMenuItems(menuRes.menuItems);
+        setMenuItems(sanitizeMenuItems(menuRes.menuItems));
       } else if (menuRes?.success && menuRes.menuItems?.length === 0) {
         postJson('/api/seed-menu', { items: menuItems }).catch(() => {});
       }
@@ -624,12 +629,68 @@ export const AppProvider = ({ children }) => {
     setSpecialNotes('');
   };
 
-  // Place Order (With Turso DB Sync)
+  const LOCAL_STORAGE_ORDER_SEQ_KEY = 'aaradhya_order_seq_counter_v1';
+
+  // Generate clean sequential order ID starting from 1 (ORD-1, ORD-2, ORD-3...)
+  const generateSequentialOrderId = (currentOrders = []) => {
+    let maxSeq = 0;
+
+    // Check localStorage counter
+    try {
+      const savedSeq = localStorage.getItem(LOCAL_STORAGE_ORDER_SEQ_KEY);
+      if (savedSeq) {
+        const parsed = parseInt(savedSeq, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 10000) {
+          maxSeq = parsed;
+        }
+      }
+    } catch (e) {}
+
+    // Check existing orders in state
+    currentOrders.forEach((o) => {
+      if (o && o.id) {
+        const match = String(o.id).match(/^ORD-(\d+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          // Only count sequential numbers < 500 (ignoring old 3-digit random mock IDs)
+          if (!isNaN(num) && num > 0 && num < 500) {
+            maxSeq = Math.max(maxSeq, num);
+          }
+        }
+      }
+    });
+
+    const nextNum = maxSeq + 1;
+
+    try {
+      localStorage.setItem(LOCAL_STORAGE_ORDER_SEQ_KEY, String(nextNum));
+    } catch (e) {}
+
+    return `ORD-${nextNum}`;
+  };
+
+  // Place Order (With Turso DB Sync & Table Occupancy Protection)
   const createOrder = async (orderData) => {
-    const newId = `ORD-${Math.floor(100 + Math.random() * 900)}`;
+    const targetTable = orderData.tableNo || tableNo;
+
+    // Block new order if table already has an ongoing active order
+    if (targetTable && targetTable !== 'Parcel') {
+      const isOccupied = orders.some(
+        (o) => o.tableNo === targetTable && o.status !== 'completed' && o.status !== 'cancelled'
+      );
+      if (isOccupied) {
+        const errorMsg = lang === 'mr'
+          ? `⚠️ ${targetTable} उपलब्ध नाही! या टेबलवर आधीच चालू ऑर्डर सुरू आहे.`
+          : `⚠️ ${targetTable} is not available! An order is already ongoing on this table.`;
+        playNotificationSound(lang === 'mr' ? 'टेबल उपलब्ध नाही!' : 'Table is not available!');
+        return { success: false, error: 'Table is not available', message: errorMsg };
+      }
+    }
+
+    const newId = generateSequentialOrderId(orders);
     const newOrder = {
       id: newId,
-      tableNo: orderData.tableNo || tableNo,
+      tableNo: targetTable,
       customerName: orderData.customerName || '',
       customerPhone: orderData.customerPhone || '',
       timestamp: new Date().toISOString(),
@@ -669,32 +730,29 @@ export const AppProvider = ({ children }) => {
     playNotificationSound(msg);
   };
 
-  // Cancel Order (Owner / Staff with Turso DB Sync)
+  // Cancel Order - Permanently delete order and credentials from state, localStorage, and DB
   const cancelOrder = async (orderId) => {
-    let targetOrder = null;
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          targetOrder = { ...ord, status: 'cancelled' };
-          return targetOrder;
-        }
-        return ord;
-      })
-    );
+    // 1. Remove order from React state immediately
+    setOrders((prev) => prev.filter((ord) => ord.id !== orderId));
 
-    // Save to localStorage immediately
+    // 2. Remove order from localStorage immediately
     try {
       const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
       if (savedStr) {
         const parsed = JSON.parse(savedStr);
-        const updated = parsed.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o));
+        const updated = parsed.filter((o) => o.id !== orderId && o.status !== 'cancelled');
         localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(updated));
       }
     } catch (e) {}
 
-    await postJson(`/api/orders/${orderId}`, { status: 'cancelled' }, 'PUT').catch(() => {});
+    // 3. Delete permanently from Database via DELETE endpoint
+    await safeFetchJson(`/api/orders/${orderId}`, { method: 'DELETE' }).catch(() => {});
 
-    playNotificationSound(lang === 'mr' ? 'ऑर्डर रद्द करण्यात आली आहे!' : 'Order cancelled successfully!');
+    playNotificationSound(
+      lang === 'mr'
+        ? 'ऑर्डर रद्द करून सिस्टीम व डेटाबेस मधून पूर्णपणे हटवली आहे!'
+        : 'Order cancelled and deleted permanently from database!'
+    );
   };
 
   // Update order payment method (Owner - Cash, UPI, Udhar)
@@ -770,16 +828,42 @@ export const AppProvider = ({ children }) => {
         customerPhone: order.customerPhone || '',
         settledAt
       }, 'PUT'),
-      postJson('/api/udhar-ledger', {
-        id: `udhar-${orderId}`,
-        orderId,
-        customerName: order.customerName || '',
-        customerPhone: order.customerPhone || '',
-        amount: order.grandTotal || 0,
-        paymentMethod: clearedPaymentMethod || 'Cash',
-        settledAt
-      })
+      safeFetchJson(`/api/udhar-ledger/${orderId}`, { method: 'DELETE' })
     ]).catch(() => {});
+
+    playNotificationSound(
+      lang === 'mr'
+        ? 'उधारीचे पैसे जमा झाले असून उधारी नोंद डेटाबेसमधून हटवली आहे!'
+        : 'Udhar payment cleared and record removed from database!'
+    );
+  };
+
+  const deleteUdharRecord = async (orderId) => {
+    setOrders((prev) =>
+      prev.map((ord) =>
+        ord.id === orderId
+          ? {
+              ...ord,
+              udharStatus: 'none',
+              paymentMethod: ord.paymentMethod === 'Udhar' ? 'Cash' : ord.paymentMethod
+            }
+          : ord
+      )
+    );
+
+    await Promise.all([
+      postJson(`/api/orders/${orderId}`, {
+        udharStatus: 'none',
+        paymentMethod: 'Cash'
+      }, 'PUT'),
+      safeFetchJson(`/api/udhar-ledger/${orderId}`, { method: 'DELETE' })
+    ]).catch(() => {});
+
+    playNotificationSound(
+      lang === 'mr'
+        ? 'उधार नोंद सिस्टीम व डेटाबेसमधून पूर्णपणे हटवली आहे!'
+        : 'Udhar record removed from database!'
+    );
   };
 
   const saveEodReport = async (reportData) => {
@@ -807,6 +891,41 @@ export const AppProvider = ({ children }) => {
 
     const res = await postJson('/api/eod-reports', newReport);
     return res || { success: true };
+  };
+
+  // Close Day & Refresh KDS Wall for New Day
+  const closeDayAndRefreshKds = async () => {
+    // 1. Clear React state immediately
+    setOrders([]);
+    setCart([]);
+    setSpecialNotes('');
+    setActiveOrderId(null);
+
+    // 2. Clear localStorage orders & reset daily order counter to 1
+    try {
+      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify([]));
+      localStorage.removeItem(LOCAL_STORAGE_ORDER_SEQ_KEY);
+    } catch (e) {}
+
+    // 3. Clear DB orders
+    await postJson('/api/orders/clear-all', {}).catch(() => {});
+
+    // 4. Broadcast empty orders to all tabs/devices on network
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      channel.postMessage({
+        type: 'SYNC_ORDERS',
+        payload: [],
+        senderId: instanceId.current
+      });
+      channel.close();
+    } catch (e) {}
+
+    playNotificationSound(
+      lang === 'mr'
+        ? 'आजचा व्यवहार बंद केला असून किचन KDS वॉल नवीन ऑर्डर्ससाठी रिफ्रेश केली आहे!'
+        : 'Day closed and KDS wall refreshed for new orders!'
+    );
   };
 
   // Add items to an existing running order (Owner Table Section)
@@ -846,6 +965,65 @@ export const AppProvider = ({ children }) => {
       postJson(`/api/orders/${orderId}`, updatedOrder, 'PUT').catch(() => {});
     }, 0);
     playNotificationSound(lang === 'mr' ? 'बिलामध्ये नवीन पदार्थ जोडले आहेत' : 'Added items to bill');
+  };
+
+  // Update/Edit full order (Items, Quantities, Extra Thalis, Table, Customer Info, Notes)
+  const updateFullOrder = async (orderId, updatedFields) => {
+    let finalUpdatedOrder = null;
+
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== orderId) return ord;
+
+        const updatedItems = updatedFields.items || ord.items;
+        const itemTotal = updatedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const extraThaliTotal = updatedItems.reduce((sum, i) => sum + (i.extraThalis || 0) * 60, 0);
+        const grandTotal = itemTotal + extraThaliTotal;
+
+        finalUpdatedOrder = {
+          ...ord,
+          ...updatedFields,
+          items: updatedItems,
+          itemTotal,
+          extraThaliTotal,
+          grandTotal
+        };
+
+        return finalUpdatedOrder;
+      })
+    );
+
+    if (finalUpdatedOrder) {
+      // Sync localStorage
+      try {
+        const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          const nextOrders = parsed.map((o) => (o.id === orderId ? finalUpdatedOrder : o));
+          localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(nextOrders));
+        }
+      } catch (e) {}
+
+      // Sync Database
+      await postJson(`/api/orders/${orderId}`, finalUpdatedOrder, 'PUT').catch(() => {});
+
+      // Broadcast update across network
+      try {
+        const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        channel.postMessage({
+          type: 'SYNC_ORDERS',
+          payload: orders.map((o) => (o.id === orderId ? finalUpdatedOrder : o)),
+          senderId: instanceId.current
+        });
+        channel.close();
+      } catch (e) {}
+    }
+
+    playNotificationSound(
+      lang === 'mr' ? 'ऑर्डर यशस्वीरित्या अपडेट करण्यात आली आहे!' : 'Order updated successfully!'
+    );
+
+    return finalUpdatedOrder;
   };
 
   // Menu Admin Operations
@@ -933,9 +1111,12 @@ export const AppProvider = ({ children }) => {
         cancelOrder,
         updatePaymentMethod,
         settleUdharPayment,
+        deleteUdharRecord,
         eodReports,
         saveEodReport,
+        closeDayAndRefreshKds,
         addItemsToExistingOrder,
+        updateFullOrder,
         activeOrderId,
         setActiveOrderId,
         activeOrder,

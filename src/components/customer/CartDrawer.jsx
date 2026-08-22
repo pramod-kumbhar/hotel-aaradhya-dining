@@ -30,6 +30,36 @@ export const CartDrawer = ({ isOpen, onClose, onOpenTracker }) => {
 
   const availableTableList = allTables || ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Parcel'];
 
+  // Automatically refresh credentials (name, notes, payment, error) whenever cart opens or tableNo changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setCustomerName('');
+      setPaymentMethod('Cash');
+      setTableError('');
+
+      // Check if chosen table is occupied
+      const isCurrentOccupied = tableNo !== 'Parcel' && orders.some(
+        (o) => o.tableNo === tableNo && o.status !== 'completed' && o.status !== 'cancelled'
+      );
+
+      // If chosen table is occupied, auto-switch to first available free table
+      if (isCurrentOccupied) {
+        const freeTable = availableTableList.find((tbl) =>
+          tbl === 'Parcel' || !orders.some((o) => o.tableNo === tbl && o.status !== 'completed' && o.status !== 'cancelled')
+        );
+        if (freeTable && freeTable !== tableNo) {
+          setTableNo(freeTable);
+        } else {
+          setTableError(
+            lang === 'mr'
+              ? `⚠️ ${tableNo} उपलब्ध नाही! कृपया दुसरे मोकळे टेबल निवडा.`
+              : `⚠️ ${tableNo} is not available! Please choose a free table.`
+          );
+        }
+      }
+    }
+  }, [isOpen, tableNo]);
+
   if (!isOpen) return null;
 
   // Calculate totals
@@ -37,47 +67,60 @@ export const CartDrawer = ({ isOpen, onClose, onOpenTracker }) => {
   const extraThaliTotal = cart.reduce((sum, item) => sum + (item.extraThalis || 0) * 60, 0);
   const grandTotal = itemTotal + extraThaliTotal;
 
-  const handleSubmitOrder = (e) => {
+  const handleSubmitOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
 
-    // Check table occupancy
+    // Check table occupancy (status is ongoing if not completed and not cancelled)
     const activeOrderOnTable = orders.find(
-      (o) => o.tableNo === tableNo && o.status !== 'completed'
+      (o) => o.tableNo === tableNo && o.status !== 'completed' && o.status !== 'cancelled'
     );
-    if (tableNo !== 'Parcel' && activeOrderOnTable && activeOrderOnTable.id !== activeOrderId) {
-      setTableError(`⚠️ ${tableNo} हे सध्या व्यस्त आहे. कृपया दुसरे मोकळे टेबल निवडा!`);
+    if (tableNo !== 'Parcel' && activeOrderOnTable) {
+      setTableError(
+        lang === 'mr'
+          ? `⚠️ टेबल उपलब्ध नाही! (${tableNo} वर आधीच चालू ऑर्डर सुरू आहे. कृपया दुसरे मोकळे टेबल निवडा)`
+          : `⚠️ Table is not available! (An order is already ongoing on ${tableNo}. Please select an available table)`
+      );
       return;
     }
     setTableError('');
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const newOrder = createOrder({
-        tableNo,
-        customerName: customerName || '',
-        customerPhone: '',
-        items: cart,
-        specialNotes,
-        paymentMethod,
-        itemTotal,
-        extraThaliTotal,
-        grandTotal
-      });
+    const newOrder = await createOrder({
+      tableNo,
+      customerName: customerName || '',
+      customerPhone: '',
+      items: cart,
+      specialNotes,
+      paymentMethod,
+      itemTotal,
+      extraThaliTotal,
+      grandTotal
+    });
 
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (err) {}
-
+    if (newOrder && newOrder.error) {
+      setTableError(newOrder.message || (lang === 'mr' ? 'टेबल उपलब्ध नाही!' : 'Table is not available!'));
       setIsSubmitting(false);
-      onClose();
-      if (onOpenTracker) onOpenTracker();
-    }, 300);
+      return;
+    }
+
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch (err) {}
+
+    // Auto-refresh/reset all credentials for clean next session
+    setCustomerName('');
+    setPaymentMethod('Cash');
+    setSpecialNotes('');
+    setTableError('');
+    setIsSubmitting(false);
+    onClose();
+    if (onOpenTracker) onOpenTracker();
   };
 
   return (
@@ -110,12 +153,24 @@ export const CartDrawer = ({ isOpen, onClose, onOpenTracker }) => {
             <label className="text-xs font-bold text-stone-300 block">टेबल क्र.</label>
             <select
               value={tableNo}
-              onChange={(e) => setTableNo(e.target.value)}
+              onChange={(e) => {
+                setTableNo(e.target.value);
+                setTableError('');
+              }}
               className="w-full bg-[#0d0c0c] border border-stone-800 rounded-xl px-3.5 py-2.5 text-xs font-bold text-stone-100 focus:outline-none focus:border-amber-500 transition"
             >
-              {availableTableList.map((tbl) => (
-                <option key={tbl} value={tbl}>{tbl === 'Parcel' ? '🛍️ पार्सल' : tbl}</option>
-              ))}
+              {availableTableList.map((tbl) => {
+                const isOccupied = tbl !== 'Parcel' && orders.some(o => o.tableNo === tbl && o.status !== 'completed' && o.status !== 'cancelled');
+                return (
+                  <option key={tbl} value={tbl}>
+                    {tbl === 'Parcel' 
+                      ? (lang === 'mr' ? '🛍️ पार्सल' : '🛍️ Parcel') 
+                      : isOccupied 
+                      ? `${tbl} (व्यस्त - टेबल उपलब्ध नाही)` 
+                      : tbl}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

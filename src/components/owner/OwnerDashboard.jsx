@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { sortMenuItemsThaliFirst } from '../../data/menuData';
 import { MenuManager } from './MenuManager';
 import { AnalyticsView } from './AnalyticsView';
 import { BillReceiptModal } from './BillReceiptModal';
 import { SettleOrderModal } from './SettleOrderModal';
+import { EditOrderModal } from '../common/EditOrderModal';
 import { UpiQrModal } from '../common/UpiQrModal';
-import { ChefHat, UtensilsCrossed, Clock, CheckCircle2, Printer, Plus, Minus, Users, LayoutGrid, DollarSign, Search, ShieldAlert, Sparkles, Banknote, QrCode, CreditCard, ShieldCheck, X } from 'lucide-react';
+import { ChefHat, UtensilsCrossed, Clock, CheckCircle2, Printer, Plus, Minus, Users, LayoutGrid, DollarSign, Search, ShieldAlert, Sparkles, Banknote, QrCode, CreditCard, ShieldCheck, X, Edit3 } from 'lucide-react';
 
 export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const { lang, orders, updateOrderStatus, cancelOrder, updatePaymentMethod, addItemsToExistingOrder, createOrder, menuItems, cart, addToCart, updateQuantity, allTables, customTables, addCustomTable, removeCustomTable, DEFAULT_TABLES, t } = useApp();
@@ -19,6 +21,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'preparing', 'ready', 'completed'
   const [selectedOrderForBill, setSelectedOrderForBill] = useState(null);
   const [settleModalOrder, setSettleModalOrder] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
   const [addItemsModalOrder, setAddItemsModalOrder] = useState(null);
   const [upiModalData, setUpiModalData] = useState({ isOpen: false, amount: 0, orderId: '' });
   const [tableAddCart, setTableAddCart] = useState([]);
@@ -32,8 +35,17 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const [posPayment, setPosPayment] = useState('Cash');
   const [posSearch, setPosSearch] = useState('');
   const [posCategory, setPosCategory] = useState('all');
+  const [posError, setPosError] = useState('');
   const [newTableNameInput, setNewTableNameInput] = useState('');
   const [isAddTableModalOpen, setIsAddTableModalOpen] = useState(false);
+
+  // Auto-refresh credentials (customer name, notes, payment method, error) whenever posTable changes
+  React.useEffect(() => {
+    setPosCustomerName('');
+    setPosNotes('');
+    setPosPayment('Cash');
+    setPosError('');
+  }, [posTable]);
 
   // Filtered orders
   const filteredOrders = orders.filter((ord) => {
@@ -70,15 +82,29 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
     );
   };
 
-  const submitPosOrder = (e) => {
+  const submitPosOrder = async (e) => {
     e.preventDefault();
     if (posCart.length === 0) return;
+
+    // Validate table availability (ongoing order if not completed and not cancelled)
+    const isOccupied = posTable !== 'Parcel' && orders.some(
+      (o) => o.tableNo === posTable && o.status !== 'completed' && o.status !== 'cancelled'
+    );
+    if (isOccupied) {
+      setPosError(
+        lang === 'mr'
+          ? `⚠️ ${posTable} उपलब्ध नाही! या टेबलवर आधीच चालू ऑर्डर सुरू आहे.`
+          : `⚠️ ${posTable} is not available! An order is already ongoing on this table.`
+      );
+      return;
+    }
+    setPosError('');
 
     const itemTotal = posCart.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const extraThaliTotal = posCart.reduce((sum, i) => sum + (i.extraThalis || 0) * 60, 0);
     const grandTotal = itemTotal + extraThaliTotal;
 
-    createOrder({
+    const res = await createOrder({
       tableNo: posTable,
       customerName: posCustomerName || '',
       items: posCart,
@@ -89,9 +115,15 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
       grandTotal
     });
 
+    if (res && res.error) {
+      setPosError(res.message || (lang === 'mr' ? 'टेबल उपलब्ध नाही!' : 'Table is not available!'));
+      return;
+    }
+
     setPosCart([]);
     setPosNotes('');
     setPosCustomerName('');
+    setPosError('');
     setActiveTab('orders');
   };
 
@@ -285,6 +317,15 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                       )}
 
                       <button
+                        onClick={() => setEditingOrder(ord)}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-stone-950 text-[11px] font-bold flex items-center gap-1 transition border border-amber-500/40"
+                        title={lang === 'mr' ? 'ऑर्डर बदला व सुधारित करा' : 'Edit Order'}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>बदला</span>
+                      </button>
+
+                      <button
                         onClick={() => setSelectedOrderForBill(ord)}
                         className="px-2.5 py-1 rounded-lg bg-stone-800 text-stone-200 text-[11px] font-bold flex items-center gap-1 hover:bg-stone-700 transition border border-stone-700"
                       >
@@ -332,6 +373,17 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
       {activeTab === 'new_order' && (
         <div className="space-y-4">
           
+          {/* Table Occupancy Error Alert Banner */}
+          {posError && (
+            <div className="p-3.5 rounded-2xl bg-red-950/90 border border-red-600 text-red-200 text-xs font-bold flex items-center justify-between shadow-lg">
+              <span className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{posError}</span>
+              </span>
+              <button type="button" onClick={() => setPosError('')} className="p-1 text-red-400 hover:text-white font-bold">✕</button>
+            </div>
+          )}
+
           {/* Menu Items Selector */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
@@ -376,17 +428,17 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
               ))}
             </div>
 
-            {/* Filtered Menu Grid */}
+            {/* Filtered Menu Grid (Thalis first -> Plates second -> Extras third) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[55vh] overflow-y-auto pr-1">
-              {menuItems
-                .filter((item) => {
+              {sortMenuItemsThaliFirst(
+                menuItems.filter((item) => {
                   const matchesCat = posCategory === 'all' || item.category === posCategory;
                   const matchesSearch =
                     item.nameMr.toLowerCase().includes(posSearch.toLowerCase()) ||
                     item.nameEn.toLowerCase().includes(posSearch.toLowerCase());
                   return matchesCat && matchesSearch;
                 })
-                .map((item) => {
+              ).map((item) => {
                   const cartItem = (cart || []).find((c) => c.id === item.id);
                   const qtyInCart = cartItem ? cartItem.quantity : 0;
 
@@ -512,17 +564,26 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             <span>💳 {lang === 'mr' ? 'पेमेंट जमा करा (Pay Bill)' : 'Settle & Pay Bill'} 🟢</span>
                           </button>
 
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-3 gap-1">
+                            <button
+                              onClick={() => setEditingOrder(activeOrd)}
+                              className="py-1.5 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-xs flex items-center justify-center gap-1 hover:bg-amber-500/30 transition border border-amber-500/40 min-h-[36px]"
+                              title={lang === 'mr' ? 'ऑर्डर बदला व सुधारित करा' : 'Edit Order'}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>{lang === 'mr' ? 'बदला' : 'Edit'}</span>
+                            </button>
+
                             <button
                               onClick={() => {
                                 setAddItemsModalOrder(activeOrd);
                                 setTableAddCart([]);
                                 setTableSearch('');
                               }}
-                              className="py-1.5 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-xs flex items-center justify-center gap-1 hover:bg-amber-500/30 transition border border-amber-500/40 min-h-[36px]"
+                              className="py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs flex items-center justify-center gap-1 transition border border-stone-700 min-h-[36px]"
                             >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>+ {lang === 'mr' ? 'पदार्थ जोडा' : 'Add Items'}</span>
+                              <Plus className="w-3.5 h-3.5 text-amber-400" />
+                              <span>+ {lang === 'mr' ? 'जोडा' : 'Add'}</span>
                             </button>
 
                             <button
@@ -530,7 +591,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                               className="py-1.5 rounded-xl bg-stone-800 text-stone-300 font-bold text-xs flex items-center justify-center gap-1 hover:bg-stone-700 transition border border-stone-700 min-h-[36px]"
                             >
                               <Printer className="w-3.5 h-3.5 text-amber-400" />
-                              <span>{lang === 'mr' ? 'पावती' : 'Receipt'}</span>
+                              <span>{lang === 'mr' ? 'पावती' : 'Bill'}</span>
                             </button>
                           </div>
 
@@ -670,14 +731,14 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
               />
             </div>
 
-            {/* Menu Selection List */}
+            {/* Menu Selection List (Thalis first -> Plates second -> Extras third) */}
             <div className="flex-1 overflow-y-auto max-h-60 grid grid-cols-1 sm:grid-cols-2 gap-2 pr-1">
-              {menuItems
-                .filter((item) =>
+              {sortMenuItemsThaliFirst(
+                menuItems.filter((item) =>
                   item.nameMr.toLowerCase().includes(tableSearch.toLowerCase()) ||
                   item.nameEn.toLowerCase().includes(tableSearch.toLowerCase())
                 )
-                .map((item) => {
+              ).map((item) => {
                   const inCart = tableAddCart.find((i) => i.id === item.id);
                   return (
                     <div
@@ -774,6 +835,15 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
 
           </div>
         </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editingOrder && (
+        <EditOrderModal
+          isOpen={!!editingOrder}
+          onClose={() => setEditingOrder(null)}
+          order={editingOrder}
+        />
       )}
 
       {/* UPI QR Code Modal */}

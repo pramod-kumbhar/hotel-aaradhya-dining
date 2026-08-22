@@ -4,14 +4,14 @@ import { BookOpen, Search, CheckCircle2, User, Smartphone, Calendar, Banknote, C
 import confetti from 'canvas-confetti';
 
 export const UdharRegisterView = () => {
-  const { orders, setOrders, lang, settleUdharPayment } = useApp();
+  const { orders, setOrders, lang, settleUdharPayment, deleteUdharRecord } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('pending'); // 'pending', 'cleared', 'all'
   const [settlingOrderId, setSettlingOrderId] = useState(null);
   const [inspectOrder, setInspectOrder] = useState(null);
 
-  // Filter Udhar orders
-  const udharOrders = orders.filter((o) => o.paymentMethod === 'Udhar' || o.udharStatus);
+  // Filter Udhar orders (only orders with active udhar tracking)
+  const udharOrders = orders.filter((o) => o.paymentMethod === 'Udhar' || (o.udharStatus && o.udharStatus !== 'none'));
 
   const isUdharPending = (o) => !o.settledAt || o.udharStatus === 'pending';
   const isUdharCleared = (o) => !!o.settledAt && o.udharStatus !== 'pending';
@@ -289,33 +289,48 @@ export const UdharRegisterView = () => {
                 </div>
 
                 {/* Total & Action */}
-                <div className="pt-2 border-t border-stone-800 flex items-center justify-between">
+                <div className="pt-2 border-t border-stone-800 flex items-center justify-between gap-2">
                   <div>
                     <span className="text-[10px] text-stone-400 block uppercase font-bold">एकूण उधारी बिल</span>
                     <span className="text-base font-black text-amber-400">₹{order.grandTotal}</span>
                   </div>
 
-                  {pending ? (
+                  <div className="flex items-center gap-1.5">
+                    {pending ? (
+                      <button
+                        type="button"
+                        onClick={() => setSettlingOrderId(order.id)}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs hover:scale-105 transition shadow"
+                      >
+                        जमा वसूल करा ➔
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>{order.clearedPaymentMethod || order.paymentMethod} द्वारे प्राप्त</span>
+                      </span>
+                    )}
+
                     <button
                       type="button"
-                      onClick={() => setSettlingOrderId(order.id)}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 font-black text-xs hover:scale-105 transition shadow"
+                      onClick={async () => {
+                        if (window.confirm(lang === 'mr' ? `तुम्हाला ${order.customerName || order.id} यांची उधार नोंद डेटाबेसमधून पूर्णपणे हटवायची आहे का?` : `Are you sure you want to remove Udhar record for ${order.customerName || order.id} from database?`)) {
+                          await deleteUdharRecord(order.id);
+                        }
+                      }}
+                      className="p-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-800/40 transition"
+                      title={lang === 'mr' ? 'ही उधार नोंद डेटाबेसमधून हटवा' : 'Delete Udhar record from database'}
                     >
-                      जमा वसूल करा ➔
+                      <X className="w-3.5 h-3.5" />
                     </button>
-                  ) : (
-                    <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>{order.clearedPaymentMethod || order.paymentMethod} द्वारे प्राप्त</span>
-                    </span>
-                  )}
+                  </div>
                 </div>
 
                 {/* Settlement Options Inline */}
                 {settlingOrderId === order.id && (
                   <div className="p-3 bg-stone-950 border border-amber-500/50 rounded-xl space-y-2 text-center animate-fade-in">
                     <p className="text-xs font-bold text-amber-300">
-                      {order.customerName} यांच्याकडून पेमेंट कसे प्राप्त झाले?
+                      {order.customerName} यांच्याकडून पेमेंट जमा झाले व डेटाबेसमधून प्रलंबित उधार नोंद हटवायची आहे?
                     </p>
                     <div className="grid grid-cols-2 gap-1.5 pt-1">
                       <button
@@ -324,7 +339,7 @@ export const UdharRegisterView = () => {
                         className="py-2 px-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition"
                       >
                         <Banknote className="w-3.5 h-3.5" />
-                        <span>💵 Cash</span>
+                        <span>💵 Cash जमा</span>
                       </button>
 
                       <button
@@ -333,7 +348,7 @@ export const UdharRegisterView = () => {
                         className="py-2 px-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs flex items-center justify-center gap-1 transition"
                       >
                         <CreditCard className="w-3.5 h-3.5" />
-                        <span>📱 UPI द्वारे</span>
+                        <span>📱 UPI जमा</span>
                       </button>
                     </div>
 
