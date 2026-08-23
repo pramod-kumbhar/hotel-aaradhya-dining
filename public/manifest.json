@@ -1,0 +1,22 @@
+{
+  "name": "हॉटेल आराध्या किचन साऊंडबॉक्स",
+  "short_name": "किचन साऊंडबॉक्स",
+  "description": "हॉटेल आराध्या डायनिंग - २४x७ किचन व्हॉईस साऊंडबॉक्स व ऑर्डर मॅनेजर",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#f59e0b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/hotel_emblem.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/hotel_emblem.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

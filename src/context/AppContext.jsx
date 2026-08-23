@@ -1086,7 +1086,7 @@ export const AppProvider = ({ children }) => {
       if (!updatedOrder) return;
       postJson(`/api/orders/${orderId}`, updatedOrder, 'PUT').catch(() => {});
     }, 0);
-    playNotificationSound(lang === 'mr' ? 'बिलामध्ये नवीन पदार्थ जोडले आहेत' : 'Added items to bill');
+    speakOrderDetails(updatedOrder, 'ऑर्डर बदलली आहे!');
   };
 
   // Update/Edit full order (Items, Quantities, Extra Thalis, Table, Customer Info, Notes)
@@ -1139,11 +1139,9 @@ export const AppProvider = ({ children }) => {
         });
         channel.close();
       } catch (e) {}
-    }
 
-    playNotificationSound(
-      lang === 'mr' ? 'ऑर्डर यशस्वीरित्या अपडेट करण्यात आली आहे!' : 'Order updated successfully!'
-    );
+      speakOrderDetails(finalUpdatedOrder, 'ऑर्डर बदलली आहे!');
+    }
 
     return finalUpdatedOrder;
   };

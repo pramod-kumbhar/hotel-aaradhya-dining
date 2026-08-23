@@ -54,8 +54,32 @@ export const ChefDashboard = () => {
   const [soundboxActivated, setSoundboxActivated] = useState(true);
   const [lastAnnouncedOrder, setLastAnnouncedOrder] = useState(null);
   const [isSpeakingAnimation, setIsSpeakingAnimation] = useState(false);
+  const [notificationPerm, setNotificationPerm] = useState(() => {
+    return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
+  });
 
-  const previousOrderIdsRef = useRef(new Set());
+  const requestNotificationPermission = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotificationPerm(perm);
+        if (perm === 'granted') {
+          playNotificationSound('लॉक स्क्रीन नोटिफिकेशन्स सुरू झाले!');
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification('🔔 लॉक स्क्रीन पुश नोटिफिकेशन्स सक्रिय!', {
+                body: 'आता स्क्रीन बंद असली तरीही नवीन ऑर्डर्स थेट लॉक स्क्रीनवर दिसतील!',
+                icon: '/hotel_emblem.png',
+                vibrate: [300, 100, 300, 100, 500]
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch (e) {}
+    }
+  };
+
+  const ordersStateMapRef = useRef({}); // { orderId: hash }
   const isFirstRender = useRef(true);
 
   // Active incoming kitchen orders only
@@ -89,38 +113,96 @@ export const ChefDashboard = () => {
     };
   }, []);
 
-  // REAL-WORLD PAYTM SOUNDBOX VOICE NOTIFICATION ENGINE (WORKS EVEN WHEN NOT LOGGED IN!)
+  const triggerLockScreenNotification = (ord, isUpdate = false) => {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const itemsList = (ord.items || []).map((i) => `${i.quantity}x ${i.nameMr}`).join(', ');
+        const title = isUpdate ? '🔔 ऑर्डर बदलली आहे!' : '🔔 नवीन ऑर्डर प्राप्त झाली!';
+        const body = `${itemsList}${ord.specialNotes ? ` (सूचना: ${ord.specialNotes})` : ''}`;
+
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, {
+              body,
+              icon: '/hotel_emblem.png',
+              badge: '/hotel_emblem.png',
+              vibrate: [300, 100, 300, 100, 500],
+              tag: `order-${ord.id}-${Date.now()}`,
+              requireInteraction: true
+            });
+          }).catch(() => {});
+        } else {
+          new Notification(title, {
+            body,
+            icon: '/hotel_emblem.png',
+            vibrate: [300, 100, 300, 100, 500]
+          });
+        }
+      }
+    } catch (e) {}
+  };
+
+  // REAL-WORLD PAYTM SOUNDBOX VOICE NOTIFICATION ENGINE (NEW & MODIFIED ORDERS!)
   useEffect(() => {
     if (!voiceEnabled || !soundboxActivated) return;
 
+    // Helper to generate a content signature for each order
+    const getOrderSignature = (ord) => {
+      const itemsStr = (ord.items || [])
+        .map((i) => `${i.id || i.nameMr}-${i.quantity || 1}-${i.extraThalis || 0}`)
+        .join('|');
+      return `${itemsStr}__${ord.specialNotes || ''}`;
+    };
+
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      previousOrderIdsRef.current = new Set(incomingOrders.map((o) => o.id));
+      const initialMap = {};
+      incomingOrders.forEach((o) => {
+        initialMap[o.id] = getOrderSignature(o);
+      });
+      ordersStateMapRef.current = initialMap;
       if (incomingOrders.length > 0) {
         setLastAnnouncedOrder(incomingOrders[0]);
       }
       return;
     }
 
-    const newlyArrived = incomingOrders.filter(
-      (o) => !previousOrderIdsRef.current.has(o.id) && o.status === 'pending'
-    );
+    const currentMap = { ...ordersStateMapRef.current };
 
-    if (newlyArrived.length > 0) {
-      newlyArrived.forEach((ord) => {
+    incomingOrders.forEach((ord) => {
+      const currentSignature = getOrderSignature(ord);
+      const previousSignature = currentMap[ord.id];
+
+      if (!previousSignature) {
+        // 1. BRAND NEW INCOMING ORDER
         setLastAnnouncedOrder(ord);
         setIsSpeakingAnimation(true);
         setTimeout(() => setIsSpeakingAnimation(false), 5000);
+        triggerLockScreenNotification(ord, false);
 
         if (speakOrderDetails) {
           speakOrderDetails(ord, 'नवीन ऑर्डर!');
         } else {
-          playNotificationSound(`नवीन ऑर्डर! ${ord.tableNo}`);
+          playNotificationSound(`नवीन ऑर्डर!`);
         }
-      });
-    }
+      } else if (previousSignature !== currentSignature) {
+        // 2. MODIFIED / UPDATED ORDER
+        setLastAnnouncedOrder(ord);
+        setIsSpeakingAnimation(true);
+        setTimeout(() => setIsSpeakingAnimation(false), 5000);
+        triggerLockScreenNotification(ord, true);
 
-    previousOrderIdsRef.current = new Set(incomingOrders.map((o) => o.id));
+        if (speakOrderDetails) {
+          speakOrderDetails(ord, 'ऑर्डर बदलली आहे!');
+        } else {
+          playNotificationSound(`ऑर्डर बदलली आहे!`);
+        }
+      }
+
+      currentMap[ord.id] = currentSignature;
+    });
+
+    ordersStateMapRef.current = currentMap;
   }, [orders, voiceEnabled, soundboxActivated, speakOrderDetails, playNotificationSound]);
 
   // Real-World Chef Login Authenticator
@@ -286,6 +368,20 @@ export const ChefDashboard = () => {
 
             {/* Test Voice & Sound Controls */}
             <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto shrink-0">
+              {/* Push Notification Toggle / Button */}
+              <button
+                type="button"
+                onClick={requestNotificationPermission}
+                className={`w-full sm:w-auto px-4 py-3 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 shadow-lg cursor-pointer transition ${
+                  notificationPerm === 'granted'
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-900'
+                    : 'bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 text-stone-950 animate-pulse'
+                }`}
+              >
+                <BellRing className="w-4 h-4 stroke-[2.5]" />
+                <span>{notificationPerm === 'granted' ? '🔔 लॉक स्क्रीन पुश ऑन' : '🔔 लॉक स्क्रीन पुश ऑन करा'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleTestSoundbox}
@@ -501,8 +597,36 @@ export const ChefDashboard = () => {
           </div>
         </div>
 
-        {/* Voice Toggle & Logout */}
-        <div className="flex items-center gap-2">
+        {/* Actions (Push Notification, Test Voice, Voice Toggle, Logout) */}
+        <div className="flex flex-wrap items-center gap-2">
+          
+          {/* Lock Screen Push Notification Button */}
+          <button
+            type="button"
+            onClick={requestNotificationPermission}
+            className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition border min-h-[38px] cursor-pointer ${
+              notificationPerm === 'granted'
+                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-stone-950 border-emerald-300 hover:from-emerald-400 animate-pulse shadow-md'
+            }`}
+            title="स्क्रीन बंद असताना नोटिफिकेशन्स मिळवण्यासाठी क्लिक करा"
+          >
+            <BellRing className="w-4 h-4 stroke-[2.5]" />
+            <span>{notificationPerm === 'granted' ? '🔔 लॉक स्क्रीन पुश ऑन' : '🔔 लॉक स्क्रीन पुश ऑन करा'}</span>
+          </button>
+
+          {/* Test Voice Button */}
+          <button
+            type="button"
+            onClick={handleTestSoundbox}
+            className="px-3 py-2 rounded-xl bg-stone-950 hover:bg-stone-800 text-stone-300 border border-stone-800 transition text-xs font-bold flex items-center gap-1.5 min-h-[38px]"
+            title="आवाज तपासा"
+          >
+            <Volume2 className="w-4 h-4 text-amber-400" />
+            <span>आवाज टेस्ट</span>
+          </button>
+
+          {/* Voice Toggle */}
           <button
             type="button"
             onClick={() => {
@@ -520,6 +644,7 @@ export const ChefDashboard = () => {
             <span>{voiceEnabled ? 'व्हॉईस ऑन' : 'आवाज बंद'}</span>
           </button>
 
+          {/* Chef Logout */}
           <button
             type="button"
             onClick={handleChefLogout}
