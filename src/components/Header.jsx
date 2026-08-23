@@ -85,6 +85,19 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
                 <span>{lang === 'mr' ? 'किचन KDS' : 'Kitchen'}</span>
               </button>
 
+              {/* 2.5 Dedicated Chef View with Voice & Login */}
+              <button
+                onClick={() => setActiveTab('chef')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'chef'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black shadow'
+                    : 'text-orange-400 hover:text-orange-200 hover:bg-stone-800/60'
+                }`}
+              >
+                <ChefHat className="w-3.5 h-3.5 text-orange-400" />
+                <span>👨‍🍳 {lang === 'mr' ? 'शेफ मोड' : 'Chef View'}</span>
+              </button>
+
               {/* OWNER UI TABS (UNLOCKED STATE) */}
               {isOwnerUnlocked ? (
                 <>
@@ -253,7 +266,7 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
         {/* 2. Kitchen Display */}
         <button
           onClick={() => setActiveTab('kds')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl shrink-0 transition-all duration-200 ${
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl shrink-0 transition-all duration-200 ${
             activeTab === 'kds'
               ? 'bg-amber-500/15 text-amber-400 font-extrabold border border-amber-500/30 shadow-sm'
               : 'text-stone-400 hover:text-stone-200'
@@ -261,6 +274,19 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
         >
           <ChefHat className={`w-4 h-4 ${activeTab === 'kds' ? 'text-amber-400 stroke-[2.5]' : 'text-stone-400'}`} />
           <span className="text-[10px] font-bold tracking-tight">{lang === 'mr' ? 'किचन' : 'Kitchen'}</span>
+        </button>
+
+        {/* 2.5 Chef View */}
+        <button
+          onClick={() => setActiveTab('chef')}
+          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl shrink-0 transition-all duration-200 ${
+            activeTab === 'chef'
+              ? 'bg-orange-500/20 text-orange-400 font-extrabold border border-orange-500/40 shadow-sm'
+              : 'text-orange-400/70 hover:text-orange-300'
+          }`}
+        >
+          <ChefHat className={`w-4 h-4 ${activeTab === 'chef' ? 'text-orange-400 stroke-[2.5]' : 'text-orange-400'}`} />
+          <span className="text-[10px] font-bold tracking-tight">{lang === 'mr' ? 'शेफ' : 'Chef'}</span>
         </button>
 
         {/* OWNER UI ONLY TABS (Shown in Bottom Footer when Owner Vault is Unlocked!) */}
@@ -376,17 +402,17 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>⚡ {lang === 'mr' ? 'काउंटर व किचन' : 'Counter & Kitchen'}</span>
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => {
                       setMode('pos');
                       setActiveTab('pos');
                       setIsMobileMenuOpen(false);
                     }}
-                    className="p-3 min-h-[48px] rounded-2xl bg-amber-950/60 border border-amber-600/40 text-amber-300 font-bold text-xs flex items-center gap-2"
+                    className="p-3 min-h-[48px] rounded-2xl bg-amber-950/60 border border-amber-600/40 text-amber-300 font-bold text-xs flex flex-col items-center justify-center gap-1 text-center"
                   >
                     <LayoutGrid className="w-4 h-4 text-amber-400" />
-                    <span>📋 {lang === 'mr' ? 'टेबल POS' : 'Table POS'}</span>
+                    <span>📋 {lang === 'mr' ? 'टेबल' : 'Table'}</span>
                   </button>
 
                   <button
@@ -394,10 +420,21 @@ export const Header = ({ activeTab, setActiveTab, onOpenEodModal, onOpenPinModal
                       setActiveTab('kds');
                       setIsMobileMenuOpen(false);
                     }}
-                    className="p-3 min-h-[48px] rounded-2xl bg-stone-900 border border-stone-800 text-stone-100 font-bold text-xs flex items-center gap-2"
+                    className="p-3 min-h-[48px] rounded-2xl bg-stone-900 border border-stone-800 text-stone-100 font-bold text-xs flex flex-col items-center justify-center gap-1 text-center"
                   >
                     <ChefHat className="w-4 h-4 text-amber-400" />
-                    <span>👨‍🍳 {lang === 'mr' ? 'किचन (KDS)' : 'Kitchen (KDS)'}</span>
+                    <span>👨‍🍳 {lang === 'mr' ? 'किचन' : 'KDS'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('chef');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="p-3 min-h-[48px] rounded-2xl bg-orange-950/60 border border-orange-600/40 text-orange-300 font-bold text-xs flex flex-col items-center justify-center gap-1 text-center"
+                  >
+                    <ChefHat className="w-4 h-4 text-orange-400" />
+                    <span>👨‍🍳 {lang === 'mr' ? 'शेफ मोड' : 'Chef'}</span>
                   </button>
                 </div>
               </div>

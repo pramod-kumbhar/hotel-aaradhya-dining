@@ -99,6 +99,128 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Paytm-style double chime player
+  const playPaytmChime = () => {
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass) {
+        const audioCtx = new AudioCtxClass();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        // Ding
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(783.99, audioCtx.currentTime); // G5
+        gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(audioCtx.currentTime);
+        osc1.stop(audioCtx.currentTime + 0.25);
+
+        // Dong
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.12); // C6
+        gain2.gain.setValueAtTime(0.35, audioCtx.currentTime + 0.12);
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(audioCtx.currentTime + 0.12);
+        osc2.stop(audioCtx.currentTime + 0.45);
+      }
+    } catch (e) {}
+  };
+
+  // Real-world Natural Voice Order Announcer (Marathi & English) with Paytm Soundbox Chime
+  const speakOrderDetails = (order, customPrefix = '') => {
+    if (isMuted || !order) return;
+
+    // 1. Play Paytm Soundbox Chime
+    playPaytmChime();
+
+    // 2. Announce Voice Speech
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+
+        // Parse items array
+        let parsedItems = order.items;
+        if (typeof parsedItems === 'string') {
+          try {
+            parsedItems = JSON.parse(parsedItems);
+          } catch (e) {
+            parsedItems = [];
+          }
+        }
+        if (!Array.isArray(parsedItems)) parsedItems = [];
+
+        // Format dish names and quantities
+        const itemsSummary = parsedItems
+          .map((i) => {
+            const qty = i.quantity || 1;
+            const dishName = lang === 'mr' ? (i.nameMr || i.nameEn) : (i.nameEn || i.nameMr);
+            const extra = i.extraThalis > 0 ? `, ${i.extraThalis} एक्स्ट्रा ताट` : '';
+            return `${qty} ${dishName}${extra}`;
+          })
+          .filter(Boolean)
+          .join(', ');
+
+        const tableLabel = order.tableNo === 'Parcel' 
+          ? (lang === 'mr' ? 'पार्सल' : 'Parcel') 
+          : `${order.tableNo}`;
+
+        const defaultPrefix = lang === 'mr' ? 'नवीन ऑर्डर!' : 'New Order!';
+        const prefix = customPrefix || defaultPrefix;
+        const notes = order.specialNotes 
+          ? (lang === 'mr' ? `. सूचना: ${order.specialNotes}` : `. Note: ${order.specialNotes}`) 
+          : '';
+
+        // Direct format WITHOUT table name: "नवीन ऑर्डर! १ स्पे. शेतकरी मटण ताट, १ मटण मालवणी ताट"
+        const speechText = itemsSummary
+          ? `${prefix} ${itemsSummary}${notes}`
+          : `${prefix}${notes}`;
+
+        const utterance = new SpeechSynthesisUtterance(speechText);
+        
+        // Find best voice available (mr-IN, hi-IN, or en-IN)
+        const voices = window.speechSynthesis.getVoices() || [];
+        const marathiVoice = voices.find((v) => v.lang?.includes('mr') || v.lang?.includes('MR'));
+        const hindiVoice = voices.find((v) => v.lang?.includes('hi') || v.lang?.includes('HI'));
+        const indianEngVoice = voices.find((v) => v.lang?.includes('en-IN') || v.lang?.includes('en_IN'));
+
+        if (marathiVoice) {
+          utterance.voice = marathiVoice;
+          utterance.lang = marathiVoice.lang;
+        } else if (hindiVoice) {
+          utterance.voice = hindiVoice;
+          utterance.lang = hindiVoice.lang;
+        } else if (indianEngVoice) {
+          utterance.voice = indianEngVoice;
+          utterance.lang = indianEngVoice.lang;
+        } else {
+          utterance.lang = lang === 'mr' ? 'mr-IN' : 'en-IN';
+        }
+
+        utterance.rate = 0.88;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Slight delay after chime (300ms) for realistic soundbox experience
+        setTimeout(() => {
+          try {
+            window.speechSynthesis.speak(utterance);
+          } catch (e) {}
+        }, 300);
+      }
+    } catch (e) {
+      console.error('Voice Speech synthesis error:', e);
+    }
+  };
+
   // Secret Owner PIN Lock Vault State (Persisted in localStorage without hardcoded defaults)
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
   const [ownerPin, setOwnerPin] = useState(() => {
@@ -709,7 +831,7 @@ export const AppProvider = ({ children }) => {
 
     await postJson('/api/orders', newOrder).catch(() => {});
 
-    playNotificationSound(lang === 'mr' ? 'नवीन ऑर्डर किचनमध्ये प्राप्त झाली आहे!' : 'New order received in kitchen!');
+    speakOrderDetails(newOrder, 'नवीन ऑर्डर आली आहे');
     return newOrder;
   };
 
@@ -1134,6 +1256,7 @@ export const AppProvider = ({ children }) => {
         addCustomTable,
         removeCustomTable,
         playNotificationSound,
+        speakOrderDetails,
         safeFetchJson,
         t
       }}

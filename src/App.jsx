@@ -7,6 +7,7 @@ import { AnalyticsView } from './components/owner/AnalyticsView';
 import { MenuManager } from './components/owner/MenuManager';
 import { UdharRegisterView } from './components/owner/UdharRegisterView';
 import { StaffManagementView } from './components/owner/StaffManagementView';
+import { ChefDashboard } from './components/chef/ChefDashboard';
 import { EodCloseModal } from './components/owner/EodCloseModal';
 import { OwnerPinModal } from './components/owner/OwnerPinModal';
 import { OwnerEmailModal } from './components/owner/OwnerEmailModal';
@@ -17,7 +18,7 @@ import { Utensils } from 'lucide-react';
 
 const MainContent = () => {
   const { lang, mode } = useApp();
-  const [activeTab, setActiveTab] = useState('welcome'); // 'welcome', 'pos', 'kds', 'analytics', 'menu', 'udhar', 'staff'
+  const [activeTab, setActiveTab] = useState('welcome'); // 'welcome', 'pos', 'waiter', 'kds', 'chef', 'analytics', 'menu', 'udhar', 'staff'
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isEodModalOpen, setIsEodModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -53,6 +54,7 @@ const MainContent = () => {
         {effectiveTab === 'pos' && <OwnerDashboard initialTab="tables" />}
         {effectiveTab === 'waiter' && <OwnerDashboard initialTab="waiter" />}
         {effectiveTab === 'kds' && <OwnerDashboard initialTab="orders" />}
+        {effectiveTab === 'chef' && <ChefDashboard />}
         {effectiveTab === 'analytics' && <AnalyticsView />}
         {effectiveTab === 'menu' && <MenuManager />}
         {effectiveTab === 'udhar' && <UdharRegisterView />}

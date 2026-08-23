@@ -27,14 +27,24 @@ export const WelcomeView = ({ onEnterSystem }) => {
           />
         </div>
 
-        {/* COMPACT & ELEGANT ENTER BUTTON */}
-        <button
-          onClick={() => onEnterSystem('pos')}
-          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-950/50 flex items-center gap-2 transition-all duration-300 active:scale-95 cursor-pointer border border-amber-400/50 group"
-        >
-          <span>प्रवेश करा (ENTER)</span>
-          <ArrowRight className="w-4 h-4 stroke-[3] group-hover:translate-x-1 transition-transform" />
-        </button>
+        {/* ACTION BUTTONS (POS ENTER & CHEF LOGIN) */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            onClick={() => onEnterSystem('pos')}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-950/50 flex items-center gap-2 transition-all duration-300 active:scale-95 cursor-pointer border border-amber-400/50 group"
+          >
+            <span>प्रवेश करा (ENTER POS)</span>
+            <ArrowRight className="w-4 h-4 stroke-[3] group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <button
+            onClick={() => onEnterSystem('chef')}
+            className="px-4 py-2.5 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-orange-400 hover:text-orange-300 font-bold text-xs sm:text-sm tracking-wide border border-orange-500/40 hover:border-orange-500/80 shadow-md flex items-center gap-1.5 transition-all duration-300 active:scale-95 cursor-pointer"
+            title="आचारी / शेफ लॉगिन"
+          >
+            <span>👨‍🍳 शेफ लॉगिन (Chef)</span>
+          </button>
+        </div>
 
       </div>
 
