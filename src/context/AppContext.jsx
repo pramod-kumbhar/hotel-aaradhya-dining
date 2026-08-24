@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_MENU_ITEMS } from '../data/menuData';
 import { TRANSLATIONS } from '../data/translations';
+import { activateBackgroundSoundbox, playOrderVoiceAndVibration, playPaytmDingDongChime } from '../services/soundboxBackgroundService';
 
 const AppContext = createContext();
 
@@ -135,90 +136,10 @@ export const AppProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  // Real-world Natural Voice Order Announcer (Marathi & English) with Paytm Soundbox Chime
+  // Real-world Natural Voice Order Announcer (Marathi & English) with Ding-Dong Soundbox Chime & Vibration
   const speakOrderDetails = (order, customPrefix = '') => {
     if (isMuted || !order) return;
-
-    // 1. Play Paytm Soundbox Chime
-    playPaytmChime();
-
-    // 2. Announce Voice Speech
-    try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-
-        // Parse items array
-        let parsedItems = order.items;
-        if (typeof parsedItems === 'string') {
-          try {
-            parsedItems = JSON.parse(parsedItems);
-          } catch (e) {
-            parsedItems = [];
-          }
-        }
-        if (!Array.isArray(parsedItems)) parsedItems = [];
-
-        // Format dish names and quantities
-        const itemsSummary = parsedItems
-          .map((i) => {
-            const qty = i.quantity || 1;
-            const dishName = lang === 'mr' ? (i.nameMr || i.nameEn) : (i.nameEn || i.nameMr);
-            const extra = i.extraThalis > 0 ? `, ${i.extraThalis} एक्स्ट्रा ताट` : '';
-            return `${qty} ${dishName}${extra}`;
-          })
-          .filter(Boolean)
-          .join(', ');
-
-        const tableLabel = order.tableNo === 'Parcel' 
-          ? (lang === 'mr' ? 'पार्सल' : 'Parcel') 
-          : `${order.tableNo}`;
-
-        const defaultPrefix = lang === 'mr' ? 'नवीन ऑर्डर!' : 'New Order!';
-        const prefix = customPrefix || defaultPrefix;
-        const notes = order.specialNotes 
-          ? (lang === 'mr' ? `. सूचना: ${order.specialNotes}` : `. Note: ${order.specialNotes}`) 
-          : '';
-
-        // Direct format WITHOUT table name: "नवीन ऑर्डर! १ स्पे. शेतकरी मटण ताट, १ मटण मालवणी ताट"
-        const speechText = itemsSummary
-          ? `${prefix} ${itemsSummary}${notes}`
-          : `${prefix}${notes}`;
-
-        const utterance = new SpeechSynthesisUtterance(speechText);
-        
-        // Find best voice available (mr-IN, hi-IN, or en-IN)
-        const voices = window.speechSynthesis.getVoices() || [];
-        const marathiVoice = voices.find((v) => v.lang?.includes('mr') || v.lang?.includes('MR'));
-        const hindiVoice = voices.find((v) => v.lang?.includes('hi') || v.lang?.includes('HI'));
-        const indianEngVoice = voices.find((v) => v.lang?.includes('en-IN') || v.lang?.includes('en_IN'));
-
-        if (marathiVoice) {
-          utterance.voice = marathiVoice;
-          utterance.lang = marathiVoice.lang;
-        } else if (hindiVoice) {
-          utterance.voice = hindiVoice;
-          utterance.lang = hindiVoice.lang;
-        } else if (indianEngVoice) {
-          utterance.voice = indianEngVoice;
-          utterance.lang = indianEngVoice.lang;
-        } else {
-          utterance.lang = lang === 'mr' ? 'mr-IN' : 'en-IN';
-        }
-
-        utterance.rate = 0.88;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        // Slight delay after chime (300ms) for realistic soundbox experience
-        setTimeout(() => {
-          try {
-            window.speechSynthesis.speak(utterance);
-          } catch (e) {}
-        }, 300);
-      }
-    } catch (e) {
-      console.error('Voice Speech synthesis error:', e);
-    }
+    playOrderVoiceAndVibration(order, customPrefix, lang);
   };
 
   // Secret Owner PIN Lock Vault State (Persisted in localStorage without hardcoded defaults)
@@ -762,7 +683,7 @@ export const AppProvider = ({ children }) => {
       const savedSeq = localStorage.getItem(LOCAL_STORAGE_ORDER_SEQ_KEY);
       if (savedSeq) {
         const parsed = parseInt(savedSeq, 10);
-        if (!isNaN(parsed) && parsed > 0 && parsed < 10000) {
+        if (!isNaN(parsed) && parsed > 0) {
           maxSeq = parsed;
         }
       }
@@ -774,8 +695,7 @@ export const AppProvider = ({ children }) => {
         const match = String(o.id).match(/^ORD-(\d+)$/i);
         if (match) {
           const num = parseInt(match[1], 10);
-          // Only count sequential numbers < 500 (ignoring old 3-digit random mock IDs)
-          if (!isNaN(num) && num > 0 && num < 500) {
+          if (!isNaN(num) && num > 0) {
             maxSeq = Math.max(maxSeq, num);
           }
         }
@@ -809,10 +729,13 @@ export const AppProvider = ({ children }) => {
       }
     }
 
+    const isParcelOrder = targetTable === 'Parcel' || orderData.isParcel === true || orderData.orderType === 'parcel';
     const newId = generateSequentialOrderId(orders);
     const newOrder = {
       id: newId,
       tableNo: targetTable,
+      isParcel: isParcelOrder,
+      orderType: isParcelOrder ? 'parcel' : 'dine_in',
       customerName: orderData.customerName || '',
       customerPhone: orderData.customerPhone || '',
       timestamp: new Date().toISOString(),
@@ -1001,6 +924,12 @@ export const AppProvider = ({ children }) => {
       udharTotal: Number(reportData.udharTotal || 0),
       vegCount: Number(reportData.vegCount || 0),
       nonVegCount: Number(reportData.nonVegCount || 0),
+      thaliCount: Number(reportData.thaliCount || 0),
+      plateCount: Number(reportData.plateCount || 0),
+      extrasCount: Number(reportData.extrasCount || 0),
+      parcelCount: Number(reportData.parcelCount || 0),
+      parcelTotal: Number(reportData.parcelTotal || 0),
+      topDishes: Array.isArray(reportData.topDishes) ? reportData.topDishes : [],
       closedAt
     };
 
@@ -1015,29 +944,19 @@ export const AppProvider = ({ children }) => {
     return res || { success: true };
   };
 
-  // Close Day & Refresh KDS Wall for New Day
+  // Close Day & Refresh Operations (Safely Preserves All Order Records in Database)
   const closeDayAndRefreshKds = async () => {
-    // 1. Clear React state immediately
-    setOrders([]);
+    // 1. Reset active working state (cart, special notes, active order selection)
     setCart([]);
     setSpecialNotes('');
     setActiveOrderId(null);
 
-    // 2. Clear localStorage orders & reset daily order counter to 1
-    try {
-      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify([]));
-      localStorage.removeItem(LOCAL_STORAGE_ORDER_SEQ_KEY);
-    } catch (e) {}
-
-    // 3. Clear DB orders
-    await postJson('/api/orders/clear-all', {}).catch(() => {});
-
-    // 4. Broadcast empty orders to all tabs/devices on network
+    // 2. Broadcast sync to all tabs/devices so all screens stay unified
     try {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
       channel.postMessage({
         type: 'SYNC_ORDERS',
-        payload: [],
+        payload: orders,
         senderId: instanceId.current
       });
       channel.close();
@@ -1045,104 +964,149 @@ export const AppProvider = ({ children }) => {
 
     playNotificationSound(
       lang === 'mr'
-        ? 'आजचा व्यवहार बंद केला असून किचन KDS वॉल नवीन ऑर्डर्ससाठी रिफ्रेश केली आहे!'
-        : 'Day closed and KDS wall refreshed for new orders!'
+        ? 'आजचा दैनिक अहवाल ई-मेल केला असून सर्व रेकॉर्ड्स डेटाबेसमध्ये सुरक्षित सेव्ह झाले आहेत!'
+        : 'Day sales report emailed and all records safely preserved in database!'
     );
   };
 
   // Add items to an existing running order (Owner Table Section)
-  const addItemsToExistingOrder = (orderId, newItemsToAdd) => {
-    let updatedOrder = null;
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id !== orderId) return ord;
-
-        const updatedItems = [...ord.items];
-        newItemsToAdd.forEach((newItem) => {
-          const idx = updatedItems.findIndex((i) => i.id === newItem.id);
-          if (idx > -1) {
-            updatedItems[idx].quantity += newItem.quantity;
-            updatedItems[idx].extraThalis = (updatedItems[idx].extraThalis || 0) + (newItem.extraThalis || 0);
-          } else {
-            updatedItems.push({ ...newItem });
-          }
-        });
-
-        const itemTotal = updatedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-        const extraThaliTotal = updatedItems.reduce((sum, i) => sum + (i.extraThalis || 0) * 60, 0);
-        const grandTotal = itemTotal + extraThaliTotal;
-
-        updatedOrder = {
-          ...ord,
-          items: updatedItems,
-          itemTotal,
-          extraThaliTotal,
-          grandTotal
-        };
-        return updatedOrder;
-      })
-    );
-    setTimeout(() => {
-      if (!updatedOrder) return;
-      postJson(`/api/orders/${orderId}`, updatedOrder, 'PUT').catch(() => {});
-    }, 0);
-    speakOrderDetails(updatedOrder, 'ऑर्डर बदलली आहे!');
-  };
-
-  // Update/Edit full order (Items, Quantities, Extra Thalis, Table, Customer Info, Notes)
-  const updateFullOrder = async (orderId, updatedFields) => {
-    let finalUpdatedOrder = null;
-
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id !== orderId) return ord;
-
-        const updatedItems = updatedFields.items || ord.items;
-        const itemTotal = updatedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-        const extraThaliTotal = updatedItems.reduce((sum, i) => sum + (i.extraThalis || 0) * 60, 0);
-        const grandTotal = itemTotal + extraThaliTotal;
-
-        finalUpdatedOrder = {
-          ...ord,
-          ...updatedFields,
-          items: updatedItems,
-          itemTotal,
-          extraThaliTotal,
-          grandTotal
-        };
-
-        return finalUpdatedOrder;
-      })
-    );
-
-    if (finalUpdatedOrder) {
-      // Sync localStorage
+  const addItemsToExistingOrder = async (orderId, newItemsToAdd) => {
+    let existingOrder = orders.find((o) => o.id === orderId);
+    if (!existingOrder) {
       try {
         const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
         if (savedStr) {
           const parsed = JSON.parse(savedStr);
-          const nextOrders = parsed.map((o) => (o.id === orderId ? finalUpdatedOrder : o));
-          localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(nextOrders));
+          existingOrder = parsed.find((o) => o.id === orderId);
         }
       } catch (e) {}
-
-      // Sync Database
-      await postJson(`/api/orders/${orderId}`, finalUpdatedOrder, 'PUT').catch(() => {});
-
-      // Broadcast update across network
-      try {
-        const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-        channel.postMessage({
-          type: 'SYNC_ORDERS',
-          payload: orders.map((o) => (o.id === orderId ? finalUpdatedOrder : o)),
-          senderId: instanceId.current
-        });
-        channel.close();
-      } catch (e) {}
-
-      speakOrderDetails(finalUpdatedOrder, 'ऑर्डर बदलली आहे!');
     }
 
+    if (!existingOrder) return null;
+
+    const updatedItems = [...(existingOrder.items || [])];
+    newItemsToAdd.forEach((newItem) => {
+      const idx = updatedItems.findIndex((i) => i.id === newItem.id);
+      if (idx > -1) {
+        updatedItems[idx].quantity += newItem.quantity;
+        updatedItems[idx].extraThalis = (updatedItems[idx].extraThalis || 0) + (newItem.extraThalis || 0);
+      } else {
+        updatedItems.push({ ...newItem });
+      }
+    });
+
+    const itemTotal = updatedItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0);
+    const extraThaliTotal = updatedItems.reduce((sum, i) => sum + Number(i.extraThalis || 0) * 60, 0);
+    const grandTotal = itemTotal + extraThaliTotal;
+
+    const updatedOrder = {
+      ...existingOrder,
+      items: updatedItems,
+      itemTotal,
+      extraThaliTotal,
+      grandTotal
+    };
+
+    // 1. React State
+    setOrders((prev) => prev.map((ord) => (ord.id === orderId ? updatedOrder : ord)));
+
+    // 2. localStorage
+    try {
+      const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+      const parsed = savedStr ? JSON.parse(savedStr) : orders;
+      const nextOrders = parsed.map((o) => (o.id === orderId ? updatedOrder : o));
+      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(nextOrders));
+    } catch (e) {}
+
+    // 3. Database Sync (PUT with fallback POST)
+    try {
+      await postJson(`/api/orders/${orderId}`, updatedOrder, 'PUT');
+    } catch (err) {
+      try {
+        await postJson('/api/orders', updatedOrder, 'POST');
+      } catch (e) {}
+    }
+
+    // 4. Broadcast Sync
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      channel.postMessage({
+        type: 'SYNC_ORDERS',
+        payload: orders.map((o) => (o.id === orderId ? updatedOrder : o)),
+        senderId: instanceId.current
+      });
+      channel.close();
+    } catch (e) {}
+
+    speakOrderDetails(updatedOrder, 'ऑर्डर बदलली आहे!');
+    return updatedOrder;
+  };
+
+  // Update/Edit full order (Items, Quantities, Extra Thalis, Table, Customer Info, Notes)
+  const updateFullOrder = async (orderId, updatedFields) => {
+    let existingOrder = orders.find((o) => o.id === orderId);
+    if (!existingOrder) {
+      try {
+        const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          existingOrder = parsed.find((o) => o.id === orderId);
+        }
+      } catch (e) {}
+    }
+
+    const baseOrder = existingOrder || { id: orderId, items: [] };
+    const updatedItems = updatedFields.items || baseOrder.items || [];
+    const itemTotal = updatedItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0);
+    const extraThaliTotal = updatedItems.reduce((sum, i) => sum + Number(i.extraThalis || 0) * 60, 0);
+    const grandTotal = itemTotal + extraThaliTotal;
+    const targetTable = updatedFields.tableNo !== undefined ? updatedFields.tableNo : (baseOrder.tableNo || 'Table 1');
+    const isParcel = targetTable === 'Parcel' || String(targetTable).toLowerCase().includes('parcel') || updatedFields.isParcel === true;
+
+    const finalUpdatedOrder = {
+      ...baseOrder,
+      ...updatedFields,
+      tableNo: targetTable,
+      isParcel,
+      orderType: isParcel ? 'parcel' : 'dine_in',
+      items: updatedItems,
+      itemTotal,
+      extraThaliTotal,
+      grandTotal
+    };
+
+    // 1. Update React state immediately
+    setOrders((prev) => prev.map((ord) => (ord.id === orderId ? finalUpdatedOrder : ord)));
+
+    // 2. Sync to localStorage immediately
+    try {
+      const savedStr = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+      const parsed = savedStr ? JSON.parse(savedStr) : orders;
+      const nextOrders = parsed.map((o) => (o.id === orderId ? finalUpdatedOrder : o));
+      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(nextOrders));
+    } catch (e) {}
+
+    // 3. Sync to Database immediately (Both PUT and fallback POST for maximum permanence)
+    try {
+      await postJson(`/api/orders/${orderId}`, finalUpdatedOrder, 'PUT');
+    } catch (err) {
+      try {
+        await postJson('/api/orders', finalUpdatedOrder, 'POST');
+      } catch (e) {}
+    }
+
+    // 4. Broadcast across network/tabs
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      channel.postMessage({
+        type: 'SYNC_ORDERS',
+        payload: orders.map((o) => (o.id === orderId ? finalUpdatedOrder : o)),
+        senderId: instanceId.current
+      });
+      channel.close();
+    } catch (e) {}
+
+    speakOrderDetails(finalUpdatedOrder, 'ऑर्डर बदलली आहे!');
     return finalUpdatedOrder;
   };
 
@@ -1255,6 +1219,7 @@ export const AppProvider = ({ children }) => {
         removeCustomTable,
         playNotificationSound,
         speakOrderDetails,
+        activateBackgroundSoundbox,
         safeFetchJson,
         t
       }}

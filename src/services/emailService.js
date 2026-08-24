@@ -15,9 +15,15 @@ export const verifySmtpConnection = async () => {
   }
 };
 
-// High-Aesthetic HTML Email Template Generator
+// // High-Aesthetic HTML Email Template Generator
 export const generateEodHtmlTemplate = (reportData) => {
-  const { date, totalRevenue, totalOrders, thaliCount = 0, plateCount = 0, extrasCount = 0, vegCount, nonVegCount, cashTotal, upiTotal, udharTotal, topDishes } = reportData;
+  const { 
+    date, totalRevenue, totalOrders, 
+    thaliCount = 0, plateCount = 0, extrasCount = 0, 
+    parcelCount = 0, parcelTotal = 0,
+    dineInCount = 0, dineInTotal = 0,
+    vegCount, nonVegCount, cashTotal, upiTotal, udharTotal, topDishes = [] 
+  } = reportData;
 
   const topDishesHtml = topDishes.map((d, i) => `
     <tr style="border-bottom: 1px solid #332d27;">
@@ -102,6 +108,14 @@ export const generateEodHtmlTemplate = (reportData) => {
             <td style="padding: 8px; color: #a8a29e;">एक्स्ट्रा पदार्थ (Extras):</td>
             <td style="padding: 8px; font-weight: bold; color: #38bdf8; text-align: right;">🫓 ${extrasCount} नग</td>
           </tr>
+          <tr>
+            <td style="padding: 8px; color: #a8a29e;">🛍️ पार्सल ऑर्डर्स (Takeaway):</td>
+            <td style="padding: 8px; font-weight: bold; color: #a78bfa; text-align: right;">${parcelCount} पार्सल (₹${parcelTotal}/-)</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; color: #a8a29e;">🍽️ डायनिंग टेबल ऑर्डर्स:</td>
+            <td style="padding: 8px; font-weight: bold; color: #34d399; text-align: right;">${dineInCount} टेबल (₹${dineInTotal}/-)</td>
+          </tr>
         </table>
       </div>
 
@@ -148,7 +162,13 @@ export const generateEodHtmlTemplate = (reportData) => {
 
 // Plain Text fallback generator
 export const generateEodReportText = (reportData) => {
-  const { date, totalRevenue, totalOrders, thaliCount = 0, plateCount = 0, extrasCount = 0, cashTotal, upiTotal, udharTotal, topDishes } = reportData;
+  const { 
+    date, totalRevenue, totalOrders, 
+    thaliCount = 0, plateCount = 0, extrasCount = 0, 
+    parcelCount = 0, parcelTotal = 0,
+    dineInCount = 0, dineInTotal = 0,
+    cashTotal, upiTotal, udharTotal, topDishes = [] 
+  } = reportData;
   const topDishesText = topDishes.map((d, i) => `${i + 1}. ${d.nameMr} (${d.count} विक्री - ₹${d.revenue})`).join('\n');
 
   return `🚩 HOTEL AARADHYA DINING - DAILY EOD SALES REPORT 🚩
@@ -162,6 +182,8 @@ export const generateEodReportText = (reportData) => {
 • 🍱 विकलेले ताट (Thalis): ${thaliCount}
 • 🍛 विकलेल्या प्लेट्स (Plates): ${plateCount}
 • 🫓 विकलेले एक्स्ट्रा पदार्थ (Extras): ${extrasCount}
+• 🛍️ पार्सल ऑर्डर्स (Takeaway): ${parcelCount} पार्सल (₹${parcelTotal}/-)
+• 🍽️ डायनिंग टेबल ऑर्डर्स: ${dineInCount} टेबल (₹${dineInTotal}/-)
 
 💵 पेमेंट पद्धतीनुसार वर्गीकरण (PAYMENT BREAKUP):
 • रोख पेमेंट (Cash Collected): ₹${cashTotal}/-

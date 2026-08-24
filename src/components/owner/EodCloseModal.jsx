@@ -30,6 +30,35 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     setNewEmailInput('');
   };
 
+  // Helper functions to accurately identify dish categories
+  const isItemThali = (item) => {
+    if (!item) return false;
+    return Boolean(
+      item.isThali ||
+      item.id?.startsWith('t') ||
+      item.nameMr?.includes('ताट') ||
+      item.nameMr?.includes('थाळी') ||
+      item.nameEn?.toLowerCase().includes('thali') ||
+      item.category === 'thali'
+    );
+  };
+
+  const isItemExtra = (item) => {
+    if (!item) return false;
+    return Boolean(
+      item.category === 'extras' ||
+      item.id?.startsWith('e') ||
+      Number(item.price) < 50 ||
+      item.nameMr?.includes('भाकरी') ||
+      item.nameMr?.includes('चपाती') ||
+      item.nameMr?.includes('पापड') ||
+      item.nameMr?.includes('ताक') ||
+      item.nameMr?.includes('सोलकढी') ||
+      item.nameMr?.includes('पाणी') ||
+      item.nameMr?.includes('जिरा')
+    );
+  };
+
   // Filter today's completed orders
   const todayStr = new Date().toISOString().split('T')[0];
   const todayOrders = orders.filter((o) => {
@@ -37,12 +66,21 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     return orderDate === todayStr && o.status === 'completed';
   });
 
-  const totalRevenue = todayOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+  const totalRevenue = todayOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
   const totalOrders = todayOrders.length;
 
-  const cashTotal = todayOrders.filter((o) => o.paymentMethod === 'Cash').reduce((sum, o) => sum + o.grandTotal, 0);
-  const upiTotal = todayOrders.filter((o) => o.paymentMethod === 'UPI').reduce((sum, o) => sum + o.grandTotal, 0);
-  const udharTotal = todayOrders.filter((o) => o.paymentMethod === 'Udhar').reduce((sum, o) => sum + o.grandTotal, 0);
+  const cashTotal = todayOrders.filter((o) => o.paymentMethod === 'Cash').reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+  const upiTotal = todayOrders.filter((o) => o.paymentMethod === 'UPI').reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+  const udharTotal = todayOrders.filter((o) => o.paymentMethod === 'Udhar').reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+
+  // Dine-in vs Parcel Orders Breakdown
+  const parcelOrders = todayOrders.filter((o) => o.tableNo === 'Parcel' || (o.tableNo && String(o.tableNo).toLowerCase().includes('parcel')));
+  const parcelCount = parcelOrders.length;
+  const parcelTotal = parcelOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+
+  const dineInOrders = todayOrders.filter((o) => o.tableNo !== 'Parcel' && (!o.tableNo || !String(o.tableNo).toLowerCase().includes('parcel')));
+  const dineInCount = dineInOrders.length;
+  const dineInTotal = dineInOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
 
   // Count Thalis, Plates, and Extras
   let thaliCount = 0;
@@ -53,24 +91,26 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
   const dishCounts = {};
 
   todayOrders.forEach((order) => {
-    order.items?.forEach((item) => {
-      if (item.isThali) {
-        thaliCount += item.quantity;
-      } else if (item.category === 'extras' || Number(item.price) < 50) {
-        extrasCount += item.quantity;
+    (order.items || []).forEach((item) => {
+      const qty = item.quantity || 1;
+      if (isItemThali(item)) {
+        thaliCount += qty;
+      } else if (isItemExtra(item)) {
+        extrasCount += qty;
       } else {
-        plateCount += item.quantity;
+        plateCount += qty;
       }
 
       if (item.category === 'veg' || item.isVeg) {
-        vegCount += item.quantity;
+        vegCount += qty;
       } else {
-        nonVegCount += item.quantity;
+        nonVegCount += qty;
       }
 
-      dishCounts[item.id] = dishCounts[item.id] || { nameMr: item.nameMr, count: 0, revenue: 0 };
-      dishCounts[item.id].count += item.quantity;
-      dishCounts[item.id].revenue += (item.price * item.quantity + (item.extraThalis || 0) * 60);
+      const key = item.id || item.nameMr;
+      dishCounts[key] = dishCounts[key] || { nameMr: item.nameMr, count: 0, revenue: 0 };
+      dishCounts[key].count += qty;
+      dishCounts[key].revenue += ((item.price || 0) * qty + (item.extraThalis || 0) * 60);
     });
   });
 
@@ -85,6 +125,10 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     thaliCount,
     plateCount,
     extrasCount,
+    parcelCount,
+    parcelTotal,
+    dineInCount,
+    dineInTotal,
     vegCount,
     nonVegCount,
     cashTotal,
@@ -108,7 +152,7 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
     // 2. Send the EOD report email to owners
     const res = await sendEodReportEmail(reportData, ownerEmail);
 
-    // 3. Automatically refresh and clear all KDS orders to start fresh from new orders
+    // 3. Automatically refresh operational state for new orders
     if (closeDayAndRefreshKds) {
       await closeDayAndRefreshKds();
     }
@@ -164,6 +208,7 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
             <span className="text-lg sm:text-xl font-black text-amber-400">₹{totalRevenue}/-</span>
           </div>
 
+          {/* Dish Counts Grid: Thalis, Plates, Extras */}
           <div className="grid grid-cols-3 gap-1.5 text-xs text-center">
             <div className="bg-stone-900 p-2 rounded-xl border border-orange-900/40">
               <span className="text-orange-400 block text-[10px] font-bold">{lang === 'mr' ? '🍱 ताट' : '🍱 Thalis'}</span>
@@ -176,6 +221,18 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
             <div className="bg-stone-900 p-2 rounded-xl border border-cyan-900/40">
               <span className="text-cyan-400 block text-[10px] font-bold">{lang === 'mr' ? '🫓 एक्स्ट्रा' : '🫓 Extras'}</span>
               <span className="font-extrabold text-cyan-300">{extrasCount}</span>
+            </div>
+          </div>
+
+          {/* Dine-In vs Parcel Split */}
+          <div className="grid grid-cols-2 gap-1.5 text-xs text-center">
+            <div className="bg-stone-900 p-2 rounded-xl border border-stone-700">
+              <span className="text-stone-400 block text-[10px] font-bold">🍽️ {lang === 'mr' ? 'डायनिंग टेबल' : 'Dine-In'}</span>
+              <span className="font-extrabold text-stone-200">{dineInCount} ऑर्डर्स (₹{dineInTotal})</span>
+            </div>
+            <div className="bg-purple-950/40 p-2 rounded-xl border border-purple-800/40">
+              <span className="text-purple-400 block text-[10px] font-bold">🛍️ {lang === 'mr' ? 'पार्सल' : 'Parcel'}</span>
+              <span className="font-extrabold text-purple-300">{parcelCount} पार्सल (₹{parcelTotal})</span>
             </div>
           </div>
 
@@ -268,25 +325,40 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
         {/* Form Submit Button */}
         <form onSubmit={handleSendEmail} className="space-y-3 pt-1">
           {!sentSuccess ? (
-            <button
-              type="submit"
-              disabled={isSending}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-stone-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-orange-950/60 hover:scale-[1.02] active:scale-98 transition disabled:opacity-50 min-h-[44px]"
-            >
-              {isSending ? (
-                <span>अहवाल पाठवत आहे...</span>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>व्यवहार बंद करा व ई-मेल पाठवा</span>
-                </>
-              )}
-            </button>
+            <>
+              <p className="text-[10px] text-emerald-400/90 font-medium text-center bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
+                {lang === 'mr'
+                  ? '🔒 अहवाल पाठवल्यानंतर आजचे सर्व विक्री व ऑर्डर्स रेकॉर्ड्स डेटाबेसमध्ये सुरक्षित जतन राहतील.'
+                  : '🔒 All order & sales records will remain permanently saved in the database.'}
+              </p>
+
+              <button
+                type="submit"
+                disabled={isSending}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-stone-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-orange-950/60 hover:scale-[1.02] active:scale-98 transition disabled:opacity-50 min-h-[44px]"
+              >
+                {isSending ? (
+                  <span>अहवाल पाठवत आहे...</span>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>{lang === 'mr' ? 'व्यवहार बंद करा व ई-मेल पाठवा' : 'Close Day Sales & Send Email'}</span>
+                  </>
+                )}
+              </button>
+            </>
           ) : (
             <div className="space-y-2 text-center animate-fade-in">
-              <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>दैनिक विक्री अहवाल ई-मेल यशस्वी पाठवला गेला आहे!</span>
+              <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 text-xs font-bold flex flex-col items-center justify-center gap-1.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{lang === 'mr' ? 'दैनिक विक्री अहवाल ई-मेल पाठवला आहे!' : 'Daily sales email sent successfully!'}</span>
+                </div>
+                <span className="text-[11px] text-emerald-400/90 font-normal">
+                  {lang === 'mr'
+                    ? '✅ आजचे सर्व ऑर्डर्स व महसूल रेकॉर्ड्स डेटाबेसमध्ये सुरक्षित सेव्ह झाले आहेत.'
+                    : '✅ All order records of today are safely preserved in the database.'}
+                </span>
               </div>
 
               {mailtoUrl && (
@@ -295,7 +367,7 @@ export const EodCloseModal = ({ isOpen, onClose }) => {
                   className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition border border-stone-700"
                 >
                   <Mail className="w-4 h-4 text-amber-400" />
-                  <span>थेट ई-मेल ॲप मध्ये उघडा</span>
+                  <span>{lang === 'mr' ? 'थेट ई-मेल ॲप मध्ये उघडा' : 'Open in Email App'}</span>
                 </a>
               )}
             </div>

@@ -267,6 +267,12 @@ export const initDb = async () => {
         udhar_total REAL NOT NULL,
         veg_count INTEGER DEFAULT 0,
         non_veg_count INTEGER DEFAULT 0,
+        thali_count INTEGER DEFAULT 0,
+        plate_count INTEGER DEFAULT 0,
+        extras_count INTEGER DEFAULT 0,
+        parcel_count INTEGER DEFAULT 0,
+        parcel_total REAL DEFAULT 0,
+        top_dishes TEXT,
         closed_at TEXT NOT NULL
       )
     `);
@@ -276,7 +282,13 @@ export const initDb = async () => {
       `ALTER TABLE orders ADD COLUMN item_total REAL DEFAULT 0`,
       `ALTER TABLE orders ADD COLUMN extra_thali_total REAL DEFAULT 0`,
       `ALTER TABLE orders ADD COLUMN udhar_status TEXT DEFAULT 'none'`,
-      `ALTER TABLE orders ADD COLUMN settled_at TEXT`
+      `ALTER TABLE orders ADD COLUMN settled_at TEXT`,
+      `ALTER TABLE eod_reports ADD COLUMN thali_count INTEGER DEFAULT 0`,
+      `ALTER TABLE eod_reports ADD COLUMN plate_count INTEGER DEFAULT 0`,
+      `ALTER TABLE eod_reports ADD COLUMN extras_count INTEGER DEFAULT 0`,
+      `ALTER TABLE eod_reports ADD COLUMN parcel_count INTEGER DEFAULT 0`,
+      `ALTER TABLE eod_reports ADD COLUMN parcel_total REAL DEFAULT 0`,
+      `ALTER TABLE eod_reports ADD COLUMN top_dishes TEXT`
     ];
 
     for (const sql of migrations) {

@@ -8,19 +8,21 @@ import {
   Flame, 
   LogOut, 
   User, 
-  Smartphone,
-  KeyRound,
-  AlertTriangle,
-  Radio,
-  BellRing,
-  Sparkles,
-  Play,
-  ShieldCheck,
-  Zap,
-  Lock,
-  Phone
+  Smartphone, 
+  KeyRound, 
+  AlertTriangle, 
+  Radio, 
+  BellRing, 
+  Sparkles, 
+  Play, 
+  ShieldCheck, 
+  Zap, 
+  Lock, 
+  Phone,
+  Vibrate
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { activateBackgroundSoundbox, playOrderVoiceAndVibration, playPaytmDingDongChime } from '../../services/soundboxBackgroundService';
 
 export const ChefDashboard = () => {
   const { 
@@ -52,11 +54,42 @@ export const ChefDashboard = () => {
   // Paytm Soundbox States
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [soundboxActivated, setSoundboxActivated] = useState(true);
+  const [isBackgroundAudioActive, setIsBackgroundAudioActive] = useState(false);
   const [lastAnnouncedOrder, setLastAnnouncedOrder] = useState(null);
   const [isSpeakingAnimation, setIsSpeakingAnimation] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
+
+  // Activate 24x7 Soundbox (Background Audio, MediaSession, WakeLock & Notifications)
+  const handleActivateSoundbox = async () => {
+    const res = await activateBackgroundSoundbox();
+    if (res && res.success) {
+      setIsBackgroundAudioActive(true);
+      setSoundboxActivated(true);
+      setVoiceEnabled(true);
+      if (res.notifPerm) setNotificationPerm(res.notifPerm);
+      playPaytmDingDongChime();
+    }
+  };
+
+  // Automatically activate background soundbox on first touch/interaction
+  useEffect(() => {
+    const triggerAutoActivate = () => {
+      activateBackgroundSoundbox().then((res) => {
+        if (res && res.success) {
+          setIsBackgroundAudioActive(true);
+        }
+      }).catch(() => {});
+    };
+
+    window.addEventListener('click', triggerAutoActivate, { once: true });
+    window.addEventListener('touchstart', triggerAutoActivate, { once: true });
+    return () => {
+      window.removeEventListener('click', triggerAutoActivate);
+      window.removeEventListener('touchstart', triggerAutoActivate);
+    };
+  }, []);
 
   const requestNotificationPermission = async () => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -64,13 +97,13 @@ export const ChefDashboard = () => {
         const perm = await Notification.requestPermission();
         setNotificationPerm(perm);
         if (perm === 'granted') {
-          playNotificationSound('लॉक स्क्रीन नोटिफिकेशन्स सुरू झाले!');
-          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          playPaytmDingDongChime();
+          if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then((reg) => {
               reg.showNotification('🔔 लॉक स्क्रीन पुश नोटिफिकेशन्स सक्रिय!', {
-                body: 'आता स्क्रीन बंद असली तरीही नवीन ऑर्डर्स थेट लॉक स्क्रीनवर दिसतील!',
+                body: 'आता स्क्रीन बंद असली तरीही नवीन ऑर्डर्सचा डिंग-डिंग आवाज, व्हायब्रेशन व व्हॉईस थेट ऐकू येईल!',
                 icon: '/hotel_emblem.png',
-                vibrate: [300, 100, 300, 100, 500]
+                vibrate: [600, 200, 600, 200, 800, 200, 1200]
               });
             }).catch(() => {});
           }
@@ -117,32 +150,34 @@ export const ChefDashboard = () => {
     try {
       if ('Notification' in window && Notification.permission === 'granted') {
         const itemsList = (ord.items || []).map((i) => `${i.quantity}x ${i.nameMr}`).join(', ');
-        const title = isUpdate ? '🔔 ऑर्डर बदलली आहे!' : '🔔 नवीन ऑर्डर प्राप्त झाली!';
+        const tableText = ord.tableNo === 'Parcel' ? '🛍️ पार्सल' : `📍 ${ord.tableNo}`;
+        const title = isUpdate ? `🔔 ऑर्डर बदलली आहे! (${tableText})` : `🔔 नवीन ऑर्डर प्राप्त झाली! (${tableText})`;
         const body = `${itemsList}${ord.specialNotes ? ` (सूचना: ${ord.specialNotes})` : ''}`;
 
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        if ('serviceWorker' in navigator) {
           navigator.serviceWorker.ready.then((reg) => {
             reg.showNotification(title, {
               body,
               icon: '/hotel_emblem.png',
               badge: '/hotel_emblem.png',
-              vibrate: [300, 100, 300, 100, 500],
+              vibrate: [600, 200, 600, 200, 800, 200, 1200],
               tag: `order-${ord.id}-${Date.now()}`,
-              requireInteraction: true
+              requireInteraction: true,
+              data: { orderId: ord.id }
             });
           }).catch(() => {});
         } else {
           new Notification(title, {
             body,
             icon: '/hotel_emblem.png',
-            vibrate: [300, 100, 300, 100, 500]
+            vibrate: [600, 200, 600, 200, 800, 200, 1200]
           });
         }
       }
     } catch (e) {}
   };
 
-  // REAL-WORLD PAYTM SOUNDBOX VOICE NOTIFICATION ENGINE (NEW & MODIFIED ORDERS!)
+  // REAL-WORLD PAYTM SOUNDBOX VOICE & VIBRATION NOTIFICATION ENGINE (NEW & MODIFIED ORDERS!)
   useEffect(() => {
     if (!voiceEnabled || !soundboxActivated) return;
 
@@ -151,7 +186,7 @@ export const ChefDashboard = () => {
       const itemsStr = (ord.items || [])
         .map((i) => `${i.id || i.nameMr}-${i.quantity || 1}-${i.extraThalis || 0}`)
         .join('|');
-      return `${itemsStr}__${ord.specialNotes || ''}`;
+      return `${itemsStr}__${ord.specialNotes || ''}__${ord.tableNo || ''}`;
     };
 
     if (isFirstRender.current) {
@@ -174,36 +209,26 @@ export const ChefDashboard = () => {
       const previousSignature = currentMap[ord.id];
 
       if (!previousSignature) {
-        // 1. BRAND NEW INCOMING ORDER
+        // 1. BRAND NEW INCOMING ORDER (Plays Ding-Dong Chime, Vibrates Mobile & Speaks Marathi Menu Items)
         setLastAnnouncedOrder(ord);
         setIsSpeakingAnimation(true);
         setTimeout(() => setIsSpeakingAnimation(false), 5000);
         triggerLockScreenNotification(ord, false);
-
-        if (speakOrderDetails) {
-          speakOrderDetails(ord, 'नवीन ऑर्डर!');
-        } else {
-          playNotificationSound(`नवीन ऑर्डर!`);
-        }
+        playOrderVoiceAndVibration(ord, 'नवीन ऑर्डर!', lang);
       } else if (previousSignature !== currentSignature) {
-        // 2. MODIFIED / UPDATED ORDER
+        // 2. MODIFIED / UPDATED ORDER (Plays Chime, Vibrates Mobile & Announces Modified Details)
         setLastAnnouncedOrder(ord);
         setIsSpeakingAnimation(true);
         setTimeout(() => setIsSpeakingAnimation(false), 5000);
         triggerLockScreenNotification(ord, true);
-
-        if (speakOrderDetails) {
-          speakOrderDetails(ord, 'ऑर्डर बदलली आहे!');
-        } else {
-          playNotificationSound(`ऑर्डर बदलली आहे!`);
-        }
+        playOrderVoiceAndVibration(ord, 'ऑर्डर बदलली आहे!', lang);
       }
 
       currentMap[ord.id] = currentSignature;
     });
 
     ordersStateMapRef.current = currentMap;
-  }, [orders, voiceEnabled, soundboxActivated, speakOrderDetails, playNotificationSound]);
+  }, [orders, voiceEnabled, soundboxActivated, lang]);
 
   // Real-World Chef Login Authenticator
   const handleChefLogin = (e) => {
@@ -293,17 +318,11 @@ export const ChefDashboard = () => {
     }
   };
 
-  // Announce single order voice
+  // Announce single order voice with Ding-Dong & Vibration
   const handleListenOrder = (ord) => {
     setIsSpeakingAnimation(true);
     setTimeout(() => setIsSpeakingAnimation(false), 5000);
-
-    if (speakOrderDetails) {
-      speakOrderDetails(ord, 'नवीन ऑर्डर!');
-    } else {
-      const itemsList = (ord.items || []).map((i) => `${i.quantity} ${i.nameMr}`).join(', ');
-      playNotificationSound(`नवीन ऑर्डर! ${itemsList}`);
-    }
+    playOrderVoiceAndVibration(ord, 'नवीन ऑर्डर!', lang);
   };
 
   // Test Soundbox Voice
@@ -315,13 +334,15 @@ export const ChefDashboard = () => {
       handleListenOrder(lastAnnouncedOrder);
     } else {
       const demoOrder = {
+        id: 'ORD-DEMO',
         tableNo: 'Table 1',
         items: [
-          { nameMr: 'स्पे. शेतकरी मटण ताट', quantity: 1, extraThalis: 0 },
-          { nameMr: 'मटण मालवणी ताट', quantity: 1, extraThalis: 1 }
-        ]
+          { nameMr: 'स्पे. शेतकरी मटण थाळी', quantity: 1, extraThalis: 0 },
+          { nameMr: 'चिकन सुक्का थाळी', quantity: 2, extraThalis: 1 }
+        ],
+        specialNotes: 'कमी तिखट'
       };
-      speakOrderDetails(demoOrder, 'नवीन ऑर्डर!');
+      playOrderVoiceAndVibration(demoOrder, 'नवीन ऑर्डर!', lang);
     }
   };
 
@@ -655,6 +676,37 @@ export const ChefDashboard = () => {
           </button>
         </div>
 
+      </div>
+
+      {/* 24x7 Real-World Background Soundbox & Vibration Status Banner */}
+      <div className="bg-gradient-to-r from-emerald-950/80 via-stone-900 to-stone-900 border border-emerald-500/50 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-2.5 text-xs text-stone-200">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 shrink-0">
+            <Radio className="w-4 h-4 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-emerald-300">
+                {lang === 'mr' ? '24x7 साऊंडबॉक्स व्हॉईस, डिंग-डिंग व व्हायब्रेशन सक्रिय' : '24x7 Soundbox Voice, Ding-Dong & Vibration Active'}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            </div>
+            <p className="text-[11px] text-stone-400">
+              {lang === 'mr' 
+                ? '📱 मोबाईल स्क्रीन बंद (Off) असली तरीही नवीन ऑर्डर येताच मोठा डिंग-डिंग आवाज, व्हायब्रेशन व मेनू ऐकू येईल!' 
+                : '📱 Even when mobile screen is OFF, you will receive loud ding-dong chime, vibration & voice notification!'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleTestSoundbox}
+          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 transition shadow shrink-0"
+        >
+          <Volume2 className="w-3.5 h-3.5" />
+          <span>{lang === 'mr' ? '🔊 आवाज + व्हायब्रेशन टेस्ट करा' : '🔊 Test Sound & Vibration'}</span>
+        </button>
       </div>
 
       {/* Incoming Orders Grid */}

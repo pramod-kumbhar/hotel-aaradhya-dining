@@ -159,10 +159,10 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// 3. Update Order Status / Settlement
+// 3. Update Order Status / Settlement / Full Edit
 app.put('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
-  const { status, paymentMethod, customerName, customerPhone, items, specialNotes, itemTotal, extraThaliTotal, grandTotal, udharStatus, settledAt } = req.body;
+  const { tableNo, status, paymentMethod, customerName, customerPhone, items, specialNotes, itemTotal, extraThaliTotal, grandTotal, udharStatus, settledAt } = req.body;
   try {
     const existing = await executeWithRetry({
       sql: 'SELECT * FROM orders WHERE id = ?',
@@ -170,33 +170,34 @@ app.put('/api/orders/:id', async (req, res) => {
     });
 
     if (!existing.rows.length) {
-      // Order not in DB yet - insert with new status
+      // Order not in DB yet - insert with new data
       await executeWithRetry({
         sql: `INSERT INTO orders (id, table_no, customer_name, customer_phone, timestamp, status, items, special_notes, payment_method, item_total, extra_thali_total, grand_total, udhar_status, settled_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           id,
-          req.body.tableNo || 'Table 1',
+          tableNo || req.body.tableNo || 'Table 1',
           customerName || '',
           customerPhone || '',
           req.body.timestamp || new Date().toISOString(),
-          status || 'cancelled',
+          status || 'pending',
           JSON.stringify(items || []),
           specialNotes || '',
           paymentMethod || 'Cash',
-          itemTotal || 0,
-          extraThaliTotal || 0,
-          grandTotal || 0,
+          Number(itemTotal || 0),
+          Number(extraThaliTotal || 0),
+          Number(grandTotal || 0),
           udharStatus || 'none',
           settledAt || null
         ]
       });
-      return res.json({ success: true, message: 'Order inserted with updated status!' });
+      return res.json({ success: true, message: 'Order inserted with updated data!' });
     }
 
     const current = existing.rows[0];
     await executeWithRetry({
       sql: `UPDATE orders SET
+              table_no = ?,
               status = ?,
               payment_method = ?,
               customer_name = ?,
@@ -210,15 +211,16 @@ app.put('/api/orders/:id', async (req, res) => {
               settled_at = ?
             WHERE id = ?`,
       args: [
+        tableNo !== undefined ? tableNo : (current.table_no || 'Table 1'),
         status !== undefined ? status : current.status,
         paymentMethod || current.payment_method || 'Cash',
         customerName !== undefined ? customerName : (current.customer_name || ''),
         customerPhone !== undefined ? customerPhone : (current.customer_phone || ''),
-        JSON.stringify(items !== undefined ? items : safeJsonParse(current.items, [])),
+        JSON.stringify(items !== undefined ? (typeof items === 'string' ? safeJsonParse(items, []) : items) : safeJsonParse(current.items, [])),
         specialNotes !== undefined ? specialNotes : (current.special_notes ?? ''),
-        itemTotal !== undefined ? itemTotal : (current.item_total ?? 0),
-        extraThaliTotal !== undefined ? extraThaliTotal : (current.extra_thali_total ?? 0),
-        grandTotal !== undefined ? grandTotal : (current.grand_total ?? 0),
+        itemTotal !== undefined ? Number(itemTotal) : (current.item_total ?? 0),
+        extraThaliTotal !== undefined ? Number(extraThaliTotal) : (current.extra_thali_total ?? 0),
+        grandTotal !== undefined ? Number(grandTotal) : (current.grand_total ?? 0),
         udharStatus !== undefined ? udharStatus : (current.udhar_status ?? 'none'),
         settledAt !== undefined ? settledAt : (current.settled_at ?? null),
         id
@@ -230,23 +232,15 @@ app.put('/api/orders/:id', async (req, res) => {
   }
 });
 
-// 4. Clear All Daily Orders on End-of-Day Close (Fresh Start for New Day)
+// 4. Safe Day Transition (Preserves Historical Orders in Database)
 app.delete('/api/orders', async (req, res) => {
-  try {
-    await executeWithRetry('DELETE FROM orders');
-    res.json({ success: true, message: 'All daily orders cleared for new day!' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+  // Prevent accidental complete table purge - historical records are permanently preserved
+  res.json({ success: true, message: 'Historical orders safely preserved in database!' });
 });
 
 app.post('/api/orders/clear-all', async (req, res) => {
-  try {
-    await executeWithRetry('DELETE FROM orders');
-    res.json({ success: true, message: 'All daily orders cleared for new day!' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+  // Prevent accidental complete table purge - historical records are permanently preserved
+  res.json({ success: true, message: 'Historical orders safely preserved in database!' });
 });
 
 // 5. Delete Single Order Permanently from Database (When Order is Cancelled)
@@ -713,6 +707,12 @@ app.get('/api/eod-reports', async (req, res) => {
       udharTotal: Number(row.udhar_total),
       vegCount: Number(row.veg_count || 0),
       nonVegCount: Number(row.non_veg_count || 0),
+      thaliCount: Number(row.thali_count || 0),
+      plateCount: Number(row.plate_count || 0),
+      extrasCount: Number(row.extras_count || 0),
+      parcelCount: Number(row.parcel_count || 0),
+      parcelTotal: Number(row.parcel_total || 0),
+      topDishes: safeJsonParse(row.top_dishes, []),
       closedAt: row.closed_at
     }));
     res.json({ success: true, reports });
@@ -722,11 +722,11 @@ app.get('/api/eod-reports', async (req, res) => {
 });
 
 app.post('/api/eod-reports', async (req, res) => {
-  const { id, dateKey, totalRevenue, totalOrders, cashTotal, upiTotal, udharTotal, vegCount, nonVegCount, closedAt } = req.body;
+  const { id, dateKey, totalRevenue, totalOrders, cashTotal, upiTotal, udharTotal, vegCount, nonVegCount, thaliCount, plateCount, extrasCount, parcelCount, parcelTotal, topDishes, closedAt } = req.body;
   try {
     await executeWithRetry({
-      sql: `INSERT INTO eod_reports (id, date_key, total_revenue, total_orders, cash_total, upi_total, udhar_total, veg_count, non_veg_count, closed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO eod_reports (id, date_key, total_revenue, total_orders, cash_total, upi_total, udhar_total, veg_count, non_veg_count, thali_count, plate_count, extras_count, parcel_count, parcel_total, top_dishes, closed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               date_key = excluded.date_key,
               total_revenue = excluded.total_revenue,
@@ -736,6 +736,12 @@ app.post('/api/eod-reports', async (req, res) => {
               udhar_total = excluded.udhar_total,
               veg_count = excluded.veg_count,
               non_veg_count = excluded.non_veg_count,
+              thali_count = excluded.thali_count,
+              plate_count = excluded.plate_count,
+              extras_count = excluded.extras_count,
+              parcel_count = excluded.parcel_count,
+              parcel_total = excluded.parcel_total,
+              top_dishes = excluded.top_dishes,
               closed_at = excluded.closed_at`,
       args: [
         id || `eod-${dateKey || new Date().toISOString().split('T')[0]}`,
@@ -747,6 +753,12 @@ app.post('/api/eod-reports', async (req, res) => {
         Number(udharTotal || 0),
         Number(vegCount || 0),
         Number(nonVegCount || 0),
+        Number(thaliCount || 0),
+        Number(plateCount || 0),
+        Number(extrasCount || 0),
+        Number(parcelCount || 0),
+        Number(parcelTotal || 0),
+        JSON.stringify(topDishes || []),
         closedAt || new Date().toISOString()
       ]
     });

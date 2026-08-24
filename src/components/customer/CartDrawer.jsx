@@ -300,7 +300,11 @@ export const CartDrawer = ({ isOpen, onClose, onOpenTracker }) => {
               disabled={cart.length === 0 || isSubmitting}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-950/50 disabled:opacity-50 transition active:scale-98 min-h-[48px]"
             >
-              {isSubmitting ? 'ऑर्डर सबमिट होत आहे...' : 'ऑर्डर पाठवा (SUBMIT ORDER)'}
+              {isSubmitting 
+                ? (lang === 'mr' ? 'ऑर्डर सबमिट होत आहे...' : 'Submitting Order...') 
+                : tableNo === 'Parcel'
+                ? (lang === 'mr' ? '🛍️ पार्सल ऑर्डर पाठवा (SUBMIT PARCEL)' : '🛍️ SUBMIT PARCEL ORDER')
+                : (lang === 'mr' ? 'ऑर्डर पाठवा (SUBMIT ORDER)' : 'SUBMIT ORDER')}
             </button>
           </div>
 

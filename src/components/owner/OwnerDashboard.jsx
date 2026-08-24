@@ -7,7 +7,7 @@ import { BillReceiptModal } from './BillReceiptModal';
 import { SettleOrderModal } from './SettleOrderModal';
 import { EditOrderModal } from '../common/EditOrderModal';
 import { UpiQrModal } from '../common/UpiQrModal';
-import { ChefHat, UtensilsCrossed, Clock, CheckCircle2, Printer, Plus, Minus, Users, LayoutGrid, DollarSign, Search, ShieldAlert, Sparkles, Banknote, QrCode, CreditCard, ShieldCheck, X, Edit3 } from 'lucide-react';
+import { ChefHat, UtensilsCrossed, Clock, CheckCircle2, Printer, Plus, Minus, Users, LayoutGrid, DollarSign, Search, ShieldAlert, Sparkles, Banknote, QrCode, CreditCard, ShieldCheck, X, Edit3, Package } from 'lucide-react';
 
 export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const { lang, orders, updateOrderStatus, cancelOrder, updatePaymentMethod, addItemsToExistingOrder, createOrder, menuItems, cart, addToCart, updateQuantity, allTables, customTables, addCustomTable, removeCustomTable, DEFAULT_TABLES, t } = useApp();
@@ -47,9 +47,16 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
     setPosError('');
   }, [posTable]);
 
-  // Filtered orders
+  // Filtered orders with Today, Active, Completed & All filters
+  const todayDateStr = new Date().toISOString().split('T')[0];
   const filteredOrders = orders.filter((ord) => {
     if (statusFilter === 'all') return true;
+    if (statusFilter === 'pending') return ord.status !== 'completed' && ord.status !== 'cancelled';
+    if (statusFilter === 'today') {
+      const ordDate = new Date(ord.timestamp).toISOString().split('T')[0];
+      return ordDate === todayDateStr;
+    }
+    if (statusFilter === 'completed') return ord.status === 'completed';
     return ord.status === statusFilter;
   });
 
@@ -176,9 +183,10 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
           {/* Status Filter Buttons (Sleek Mobile Scrollable Container) */}
           <div className="flex bg-stone-950 p-1 rounded-xl border border-stone-800 overflow-x-auto no-scrollbar gap-1 w-full">
             {[
-              { id: 'all', labelMr: 'सर्व ऑर्डर्स', labelEn: 'All Orders' },
               { id: 'pending', labelMr: 'चालू ऑर्डर्स', labelEn: 'Active Orders' },
-              { id: 'completed', labelMr: 'पूर्ण ऑर्डर्स', labelEn: 'Completed Orders' }
+              { id: 'today', labelMr: 'आजच्या ऑर्डर्स', labelEn: "Today's Orders" },
+              { id: 'completed', labelMr: 'पूर्ण ऑर्डर्स', labelEn: 'Completed Orders' },
+              { id: 'all', labelMr: 'सर्व रेकॉर्ड्स', labelEn: 'All History' }
             ].map((st) => (
               <button
                 key={st.id}
@@ -205,6 +213,8 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                 <h3 className="text-sm sm:text-base font-extrabold text-stone-200">
                   {statusFilter === 'pending'
                     ? (lang === 'mr' ? 'सध्या कोणतीही चालू ऑर्डर नाही' : 'No Active Orders Right Now')
+                    : statusFilter === 'today'
+                    ? (lang === 'mr' ? 'आजच्या तारखेला कोणतीही ऑर्डर नाही' : "No Orders for Today")
                     : statusFilter === 'completed'
                     ? (lang === 'mr' ? 'कोणतीही पूर्ण झालेली ऑर्डर नाही' : 'No Completed Orders Yet')
                     : (lang === 'mr' ? 'कोणतीही ऑर्डर सापडली नाही' : 'No Orders Found')}
@@ -516,9 +526,139 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
           {/* Table Cards Grid (Desktop & Mobile Optimized) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
               {allTableNames.map((tbl) => {
+                const isParcelCard = tbl === 'Parcel';
+                const activeParcelOrders = isParcelCard 
+                  ? orders.filter((o) => (o.tableNo === 'Parcel' || o.isParcel || (o.tableNo && String(o.tableNo).toLowerCase().includes('parcel'))) && o.status !== 'completed' && o.status !== 'cancelled')
+                  : [];
                 const activeOrd = tableStatusMap[tbl];
                 const isCustom = customTables.includes(tbl);
 
+                // 1. Specialized Dedicated Render for Parcel / Takeaway Counter
+                if (isParcelCard) {
+                  return (
+                    <div
+                      key={tbl}
+                      className="p-5 rounded-2xl border flex flex-col justify-between space-y-3 transition bg-gradient-to-br from-purple-950/40 via-stone-900 to-stone-900 border-purple-600/50 shadow-xl"
+                    >
+                      {/* Parcel Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/40">
+                            <Package className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-extrabold text-purple-200">
+                              {lang === 'mr' ? '🛍️ पार्सल काउंटर' : '🛍️ Parcel Counter'}
+                            </h4>
+                            <span className="text-[10px] text-purple-400 font-semibold">
+                              {lang === 'mr' ? 'टेकअवे (पार्सल)' : 'Takeaway Orders'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`w-3 h-3 rounded-full ${activeParcelOrders.length > 0 ? 'bg-purple-400 animate-pulse' : 'bg-purple-500'}`} />
+                      </div>
+
+                      {/* Active Parcel Orders or Empty Counter State */}
+                      {activeParcelOrders.length > 0 ? (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-purple-300">
+                              {lang === 'mr' ? `चालू पार्सल ऑर्डर्स (${activeParcelOrders.length})` : `Active Parcels (${activeParcelOrders.length})`}
+                            </span>
+                            <span className="text-[10px] font-bold text-purple-400">
+                              ₹{activeParcelOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0)}
+                            </span>
+                          </div>
+
+                          {/* List of active parcel orders */}
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {activeParcelOrders.map((pOrd) => (
+                              <div key={pOrd.id} className="p-2.5 rounded-xl bg-stone-950/80 border border-purple-800/40 space-y-1.5 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono font-bold text-purple-300 text-[11px]">{pOrd.id}</span>
+                                  <span className="font-black text-amber-400 text-xs">₹{pOrd.grandTotal}</span>
+                                </div>
+                                {pOrd.customerName && (
+                                  <p className="text-[11px] text-stone-300 truncate">
+                                    👤 {pOrd.customerName} {pOrd.customerPhone ? `(${pOrd.customerPhone})` : ''}
+                                  </p>
+                                )}
+                                <p className="text-[10px] text-stone-400 truncate">
+                                  {(pOrd.items || []).map(i => `${i.nameMr || i.nameEn} x ${i.quantity}`).join(', ')}
+                                </p>
+
+                                {/* Action buttons for this parcel */}
+                                <div className="grid grid-cols-3 gap-1 pt-1 border-t border-stone-800/80">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSettleModalOrder(pOrd)}
+                                    className="py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center gap-1 transition"
+                                    title="Pay Bill"
+                                  >
+                                    <ShieldCheck className="w-3 h-3" />
+                                    <span>{lang === 'mr' ? 'बिल जमा' : 'Pay'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingOrder(pOrd)}
+                                    className="py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[10px] flex items-center justify-center gap-1 transition border border-amber-500/30"
+                                    title="Edit Order"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                    <span>{lang === 'mr' ? 'बदला' : 'Edit'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrderForBill(pOrd)}
+                                    className="py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-[10px] flex items-center justify-center gap-1 transition border border-stone-700"
+                                    title="Print Bill"
+                                  >
+                                    <Printer className="w-3 h-3" />
+                                    <span>{lang === 'mr' ? 'पावती' : 'Bill'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Take Another Parcel Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPosTable('Parcel');
+                              setActiveTab('new_order');
+                            }}
+                            className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-purple-950/40"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{lang === 'mr' ? '+ आणखी एक पार्सल ऑर्डर घ्या' : '+ Take Another Parcel'}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-xs font-bold text-purple-300 bg-purple-950/60 px-2.5 py-1 rounded-lg w-fit border border-purple-800/60 flex items-center gap-1.5">
+                            <Package className="w-3.5 h-3.5 text-purple-400" />
+                            <span>{lang === 'mr' ? '🛍️ पार्सल काउंटर उपलब्ध' : '🛍️ Parcel Counter Ready'}</span>
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPosTable('Parcel');
+                              setActiveTab('new_order');
+                            }}
+                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-600 hover:to-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-purple-950/40 border border-purple-500/40"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{lang === 'mr' ? '🛍️ नवीन पार्सल ऑर्डर घ्या' : '🛍️ Take New Parcel Order'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // 2. Standard Dining Table Card Render
                 return (
                   <div
                     key={tbl}
