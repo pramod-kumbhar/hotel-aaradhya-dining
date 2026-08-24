@@ -19,7 +19,10 @@ import {
   Zap, 
   Lock, 
   Phone,
-  Vibrate
+  Vibrate,
+  Maximize2,
+  Minimize2,
+  Monitor
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { activateBackgroundSoundbox, playOrderVoiceAndVibration, playPaytmDingDongChime } from '../../services/soundboxBackgroundService';
@@ -60,6 +63,17 @@ export const ChefDashboard = () => {
   const [notificationPerm, setNotificationPerm] = useState(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    try {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+      } else {
+        document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+      }
+    } catch (e) {}
+  };
 
   // Activate 24x7 Soundbox (Background Audio, MediaSession, WakeLock & Notifications)
   const handleActivateSoundbox = async () => {
@@ -645,6 +659,17 @@ export const ChefDashboard = () => {
           >
             <Volume2 className="w-4 h-4 text-amber-400" />
             <span>आवाज टेस्ट</span>
+          </button>
+
+          {/* Fullscreen Kitchen Kiosk Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 transition text-xs font-bold flex items-center gap-1.5 min-h-[38px] cursor-pointer"
+            title="किचन स्टँड फुलस्क्रीन मोड (स्क्रीन सतत चालू राहते)"
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <span>{isFullscreen ? 'स्क्रीन लहान करा' : '⛶ फुलस्क्रीन'}</span>
           </button>
 
           {/* Voice Toggle */}
