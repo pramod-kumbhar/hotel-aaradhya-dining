@@ -166,46 +166,48 @@ export const playOrderVoiceAndVibration = (order, customPrefix = '', lang = 'mr'
     ? (lang === 'mr' ? `. सूचना: ${order.specialNotes}` : `. Note: ${order.specialNotes}`) 
     : '';
 
-  const speechText = itemsSummary
-    ? `${prefix} ${tableText}, ${itemsSummary}${notes}`
-    : `${prefix} ${tableText}${notes}`;
+  // 4. Real Marathi Spoken Speech Playback (HTML5 Audio Stream - Works even when screen is locked / OFF)
+  try {
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(speechText)}&lang=mr`;
+    const ttsAudio = new Audio(ttsUrl);
+    ttsAudio.volume = 1.0;
 
-  // 4. Voice Speech Synthesis (Marathi / Hindi)
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(speechText);
-      
-      const voices = window.speechSynthesis.getVoices() || [];
-      const marathiVoice = voices.find((v) => v.lang?.includes('mr') || v.lang?.includes('MR'));
-      const hindiVoice = voices.find((v) => v.lang?.includes('hi') || v.lang?.includes('HI'));
-      const indianEngVoice = voices.find((v) => v.lang?.includes('en-IN') || v.lang?.includes('en_IN'));
+    // Slight delay after chime (350ms)
+    setTimeout(() => {
+      ttsAudio.play().catch((err) => {
+        // Fallback to Web SpeechSynthesis if network stream fails
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          try {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(speechText);
+            
+            const voices = window.speechSynthesis.getVoices() || [];
+            const marathiVoice = voices.find((v) => v.lang?.includes('mr') || v.lang?.includes('MR'));
+            const hindiVoice = voices.find((v) => v.lang?.includes('hi') || v.lang?.includes('HI'));
+            const indianEngVoice = voices.find((v) => v.lang?.includes('en-IN') || v.lang?.includes('en_IN'));
 
-      if (marathiVoice) {
-        utterance.voice = marathiVoice;
-        utterance.lang = marathiVoice.lang;
-      } else if (hindiVoice) {
-        utterance.voice = hindiVoice;
-        utterance.lang = hindiVoice.lang;
-      } else if (indianEngVoice) {
-        utterance.voice = indianEngVoice;
-        utterance.lang = indianEngVoice.lang;
-      } else {
-        utterance.lang = lang === 'mr' ? 'mr-IN' : 'en-IN';
-      }
+            if (marathiVoice) {
+              utterance.voice = marathiVoice;
+              utterance.lang = marathiVoice.lang;
+            } else if (hindiVoice) {
+              utterance.voice = hindiVoice;
+              utterance.lang = hindiVoice.lang;
+            } else if (indianEngVoice) {
+              utterance.voice = indianEngVoice;
+              utterance.lang = indianEngVoice.lang;
+            } else {
+              utterance.lang = lang === 'mr' ? 'mr-IN' : 'en-IN';
+            }
 
-      utterance.rate = 0.88;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-
-      // Slight delay after chime (300ms) for clear hearing
-      setTimeout(() => {
-        try {
-          window.speechSynthesis.speak(utterance);
-        } catch (e) {}
-      }, 350);
-    } catch (e) {}
-  }
+            utterance.rate = 0.88;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            window.speechSynthesis.speak(utterance);
+          } catch (e) {}
+        }
+      });
+    }, 350);
+  } catch (e) {}
 
   // 5. Lock-Screen Push Notification via Service Worker
   try {

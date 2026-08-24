@@ -71,6 +71,45 @@ const createTransporter = (forceTls = false) => {
 };
 
 // ===================================================
+// REAL AUDIO SPEECH SYNTHESIS STREAMING API (FOR BACKGROUND SOUNDBOX ON MOBILE)
+// ===================================================
+app.get('/api/tts', async (req, res) => {
+  const text = (req.query.text || '').trim();
+  const lang = req.query.lang || 'mr';
+  if (!text) return res.status(400).send('Text query is required');
+
+  try {
+    const encodedText = encodeURIComponent(text);
+    const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodedText}`;
+
+    const response = await fetch(googleTtsUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`TTS Upstream Error: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': buffer.length,
+      'Cache-Control': 'public, max-age=86400',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('TTS endpoint error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===================================================
 // TURSO DATABASE REST API ENDPOINTS (WITH RETRY & FALLBACK)
 // ===================================================
 
