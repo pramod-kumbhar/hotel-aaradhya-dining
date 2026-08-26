@@ -126,6 +126,13 @@ export const playPaytmDingDongChime = () => {
 export const playOrderVoiceAndVibration = (order, customPrefix = '', lang = 'mr') => {
   if (!order) return;
 
+  // Global Voice Mute Guard: If user turned voice off, do not play any chime, voice or vibration
+  try {
+    if (localStorage.getItem('aaradhya_voice_muted_db') === 'true') {
+      return;
+    }
+  } catch (e) {}
+
   // 1. Strong Physical Vibration for Mobile (Works when phone in pocket or screen dark)
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     try {

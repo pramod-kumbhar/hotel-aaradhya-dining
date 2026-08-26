@@ -10,7 +10,7 @@ import { UpiQrModal } from '../common/UpiQrModal';
 import { ChefHat, UtensilsCrossed, Clock, CheckCircle2, Printer, Plus, Minus, Users, LayoutGrid, DollarSign, Search, ShieldAlert, Sparkles, Banknote, QrCode, CreditCard, ShieldCheck, X, Edit3, Package } from 'lucide-react';
 
 export const OwnerDashboard = ({ initialTab = 'tables' }) => {
-  const { lang, orders, updateOrderStatus, cancelOrder, updatePaymentMethod, addItemsToExistingOrder, createOrder, menuItems, cart, addToCart, updateQuantity, allTables, customTables, addCustomTable, removeCustomTable, DEFAULT_TABLES, t } = useApp();
+  const { lang, tableNo, setTableNo, orders, updateOrderStatus, cancelOrder, updatePaymentMethod, addItemsToExistingOrder, createOrder, menuItems, cart, addToCart, updateQuantity, allTables, customTables, addCustomTable, removeCustomTable, DEFAULT_TABLES, t } = useApp();
 
   const [activeTab, setActiveTab] = useState(initialTab); // 'orders', 'new_order', 'tables', 'menu', 'analytics'
 
@@ -28,7 +28,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const [tableSearch, setTableSearch] = useState('');
 
   // New POS Order Form state
-  const [posTable, setPosTable] = useState('Table 1');
+  const [posTable, setPosTable] = useState(() => tableNo || 'Table 1');
   const [posCustomerName, setPosCustomerName] = useState('');
   const [posCart, setPosCart] = useState([]);
   const [posNotes, setPosNotes] = useState('');
@@ -39,13 +39,23 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
   const [newTableNameInput, setNewTableNameInput] = useState('');
   const [isAddTableModalOpen, setIsAddTableModalOpen] = useState(false);
 
-  // Auto-refresh credentials (customer name, notes, payment method, error) whenever posTable changes
+  // Auto-refresh credentials & sync global tableNo whenever posTable changes
   React.useEffect(() => {
     setPosCustomerName('');
     setPosNotes('');
     setPosPayment('Cash');
     setPosError('');
+    if (posTable && setTableNo) {
+      setTableNo(posTable);
+    }
   }, [posTable]);
+
+  // Keep posTable in sync if global tableNo is updated elsewhere
+  React.useEffect(() => {
+    if (tableNo && tableNo !== posTable) {
+      setPosTable(tableNo);
+    }
+  }, [tableNo]);
 
   // Filtered orders with Today, Active, Completed & All filters
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -383,6 +393,55 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
       {activeTab === 'new_order' && (
         <div className="space-y-4">
           
+          {/* Table & Parcel Selection Bar for New Order Entry */}
+          <div className="bg-stone-900 border border-amber-600/30 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xl">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                {posTable === 'Parcel' ? '🛍️' : '📍'}
+                <span>{lang === 'mr' ? 'निवडलेले टेबल / ऑपशन:' : 'Selected Table / Option:'}</span>
+              </span>
+              <select
+                value={posTable}
+                onChange={(e) => {
+                  setPosTable(e.target.value);
+                  if (setTableNo) setTableNo(e.target.value);
+                }}
+                className="bg-stone-950 border border-amber-500/60 rounded-xl px-3.5 py-2 text-xs font-black text-amber-300 focus:outline-none focus:border-amber-400 cursor-pointer shadow-inner"
+              >
+                {allTableNames.map((tbl) => {
+                  const isOccupied = tbl !== 'Parcel' && orders.some(o => o.tableNo === tbl && o.status !== 'completed' && o.status !== 'cancelled');
+                  return (
+                    <option key={tbl} value={tbl}>
+                      {tbl === 'Parcel' 
+                        ? (lang === 'mr' ? '🛍️ पार्सल काउंटर (Takeaway)' : '🛍️ Parcel Counter (Takeaway)') 
+                        : isOccupied 
+                        ? `📍 ${tbl} (व्यस्त - Ongoing)` 
+                        : `📍 ${tbl}`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Quick Toggle Button for Parcel */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextTbl = posTable === 'Parcel' ? 'Table 1' : 'Parcel';
+                setPosTable(nextTbl);
+                if (setTableNo) setTableNo(nextTbl);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition border flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
+                posTable === 'Parcel'
+                  ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 shadow-purple-950/40'
+                  : 'bg-stone-950 hover:bg-stone-800 text-purple-300 border-purple-500/40'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>{posTable === 'Parcel' ? (lang === 'mr' ? '✓ पार्सल निवडले' : '✓ Parcel Selected') : (lang === 'mr' ? '🛍️ पार्सल काउंटर निवडा' : '🛍️ Select Parcel')}</span>
+            </button>
+          </div>
+          
           {/* Table Occupancy Error Alert Banner */}
           {posError && (
             <div className="p-3.5 rounded-2xl bg-red-950/90 border border-red-600 text-red-200 text-xs font-bold flex items-center justify-between shadow-lg">
@@ -626,6 +685,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             type="button"
                             onClick={() => {
                               setPosTable('Parcel');
+                              if (setTableNo) setTableNo('Parcel');
                               setActiveTab('new_order');
                             }}
                             className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-purple-950/40"
@@ -645,6 +705,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                             type="button"
                             onClick={() => {
                               setPosTable('Parcel');
+                              if (setTableNo) setTableNo('Parcel');
                               setActiveTab('new_order');
                             }}
                             className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-600 hover:to-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-purple-950/40 border border-purple-500/40"
@@ -758,6 +819,7 @@ export const OwnerDashboard = ({ initialTab = 'tables' }) => {
                           <button
                             onClick={() => {
                               setPosTable(tbl);
+                              if (setTableNo) setTableNo(tbl);
                               setActiveTab('new_order');
                             }}
                             className="w-full py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-400 font-bold text-xs flex items-center justify-center gap-1 transition border border-amber-600/30"

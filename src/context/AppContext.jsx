@@ -56,7 +56,25 @@ export const AppProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [specialNotes, setSpecialNotes] = useState('');
   const [activeOrderId, setActiveOrderId] = useState(null);
-  const [isMuted, setIsMuted] = useState(false); // Audio mute state
+  
+  // Persistent Audio Mute state across tabs & restarts
+  const [isMuted, setIsMutedState] = useState(() => {
+    try {
+      return localStorage.getItem('aaradhya_voice_muted_db') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setIsMuted = (val) => {
+    setIsMutedState((prev) => {
+      const nextVal = typeof val === 'function' ? val(prev) : Boolean(val);
+      try {
+        localStorage.setItem('aaradhya_voice_muted_db', nextVal ? 'true' : 'false');
+      } catch (e) {}
+      return nextVal;
+    });
+  };
 
   // Voice Announcement & Sound Chime Player
   const playNotificationSound = (textAnnouncement = '') => {
@@ -139,6 +157,13 @@ export const AppProvider = ({ children }) => {
   // Real-world Natural Voice Order Announcer (Marathi & English) with Ding-Dong Soundbox Chime & Vibration
   const speakOrderDetails = (order, customPrefix = '') => {
     if (isMuted || !order) return;
+    try {
+      // Only announce voice messages if Chef is logged in on this device
+      const chefSession = localStorage.getItem('aaradhya_chef_session');
+      if (!chefSession) return;
+    } catch (e) {
+      return;
+    }
     playOrderVoiceAndVibration(order, customPrefix, lang);
   };
 
